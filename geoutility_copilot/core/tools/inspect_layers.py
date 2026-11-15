@@ -24,7 +24,8 @@ class InspectLayersTool:
     name = "inspect_layers"
     description = (
         "Inspect project layers and schemas. Use this before assuming layer or field names. "
-        "Do not use it to calculate statistics or select features."
+        "Returns confirmed schema roles and selected counts needed to resolve phrases such as "
+        "'this feeder'. Do not use it to calculate statistics or select features."
     )
     risk = Risk.READ
     input_schema: ClassVar[dict[str, Any]] = {

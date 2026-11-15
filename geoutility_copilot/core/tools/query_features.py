@@ -17,7 +17,8 @@ class QueryFeaturesTool:
     name = "query_features"
     description = (
         "Filter one vector layer with a QGIS expression, optionally change its selection, "
-        "and calculate count/sum/min/max/mean aggregates. Use real fields from inspect_layers."
+        "and calculate count/sum/min/max/mean aggregates. Use real fields from inspect_layers. "
+        "Use mode=intersect to preserve an existing spatial selection while applying an attribute filter."
     )
     risk = Risk.SELECTION
     input_schema: ClassVar[dict[str, Any]] = {

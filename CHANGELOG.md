@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   argument-sensitive approval, and optional temporary orphan result layers.
 - One-shot selection undo controls backed by private controller snapshots and safe
   handling when target layers are removed.
+- Versioned composite-prompt guidance and deterministic scenarios for orphan assets,
+  feeder-distance selection, overloaded transformers, and ambiguous feeder ask-back.
 
 ## [0.1.0] - 2026-11-15
 
