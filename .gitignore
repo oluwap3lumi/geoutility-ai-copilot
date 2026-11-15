@@ -32,5 +32,6 @@ Thumbs.db
 
 # QGIS local state
 .qgis-settings/
+symbology-style.db
 *.qgs~
 *.qgz~
