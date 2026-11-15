@@ -3,13 +3,16 @@
 GeoUtility AI Copilot is a QGIS plugin for electricity-distribution GIS teams. It provides a
 dock-panel chat where Claude can inspect project layers and invoke bounded GIS tools.
 
-Milestone 1 includes schema-only layer awareness and two executable tools:
+Milestone 2 includes schema-aware layer context and four executable tools:
 
 - `inspect_layers`: list layers or inspect one vector layer's schema.
 - `query_features`: filter with a validated QGIS expression, aggregate, and optionally select.
+- `spatial_select`: select by metric distance or exact spatial relationship across differing CRSs.
+- `find_unconnected`: find orphan assets by normalized keys or spatial tolerance, optionally adding
+  an approved temporary result layer.
 
-Selections are reversible and do not edit source data. Output and modification tools are not part
-of Milestone 1.
+Selections are reversible and do not edit source data. GeoUtility does not ship a source-data
+modification tool in v1.
 
 ## Development
 
@@ -31,6 +34,26 @@ repository.
 4. Enable **GeoUtility AI Copilot** under *Plugins → Manage and Install Plugins*.
 5. Open **Settings** in the dock and store an Anthropic API key. The key is stored through QGIS
    Authentication Manager; plaintext keys are never written to `QgsSettings` or logs.
+
+## Schema map
+
+The schema map connects semantic utility roles (`transformer`, `customer`, `pole`, and
+`feeder_11kv`) to the layer and field names in the current project. Open **Settings**, choose
+**Propose from project**, review the editable JSON, and save only after the mapping is correct.
+Confirmed mappings are stored in the QGIS project with a global fallback. The copilot exposes
+confirmed roles to the model but never silently confirms proposed roles.
+
+## Safety and approvals
+
+- READ operations run automatically and do not change project state.
+- SELECTION operations run automatically, appear as tool steps, and include **Undo selection**.
+- OUTPUT operations require explicit approval before adding a layer or writing a file.
+- **Approve for this chat session** applies only to OUTPUT; it never applies to MODIFY.
+- **Read-only mode** blocks OUTPUT and MODIFY completely.
+- No real MODIFY tool ships in v1.
+
+`find_unconnected(create_layer=false)` is READ. Setting `create_layer=true` changes that call to
+OUTPUT and triggers the approval dialog before the temporary layer is created.
 
 ## Privacy defaults
 
