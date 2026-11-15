@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   and role/sensitivity exposure in layer context.
 - Code-enforced risk policy, read-only blocking, explicit output/modify approval dialog,
   OUTPUT session approval, and approval-aware audit records.
+- CRS-safe `spatial_select` with metre-distance, geometry predicates, selected/expression
+  reference filters, spatial indexing, and geographic/projected fixture parity.
 
 ## [0.1.0] - 2026-11-15
 
