@@ -73,7 +73,6 @@ class QueryFeaturesTool:
                 )
         features = list(layer.getFeatures(QgsFeatureRequest(expression)))
         ids = [feature.id() for feature in features]
-        previous = list(layer.selectedFeatureIds())
         if args.get("select", False):
             _apply_selection(layer, ids, str(args.get("mode", "new")))
         data: dict[str, Any] = {
@@ -81,7 +80,6 @@ class QueryFeaturesTool:
             "count": len(features),
             "sample_ids": ids[: context.max_result_ids],
             "selected_count": layer.selectedFeatureCount(),
-            "previous_selection_ids": previous[: context.max_result_ids],
         }
         aggregate = args.get("aggregate")
         if aggregate:

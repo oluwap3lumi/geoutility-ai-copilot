@@ -9,7 +9,7 @@ import pytest
 from qgis.core import QgsFeature, QgsGeometry, QgsPointXY, QgsProject, QgsSettings, QgsVectorLayer
 
 from geoutility_copilot.core.audit import AuditLogger
-from geoutility_copilot.core.controller import AgentController
+from geoutility_copilot.core.controller import AgentController, compact_history
 from geoutility_copilot.core.llm.base import LLMReply, ToolCall
 from geoutility_copilot.core.llm.fake import FakeProvider
 from geoutility_copilot.core.llm.task import CompletionTask
@@ -279,3 +279,28 @@ def test_selection_undo_handles_removed_layer(qgis_new_project: QgsProject) -> N
     controller.undo_selection(tokens[0])
 
     assert "layer was removed" in errors[-1]
+
+
+def test_old_tool_results_are_compacted_without_mutating_history() -> None:
+    large = {"ok": True, "summary": "Found features", "data": {"ids": list(range(1000))}}
+    history: list[dict[str, object]] = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": str(index),
+                    "content": large,
+                    "is_error": False,
+                }
+            ],
+        }
+        for index in range(8)
+    ]
+
+    compacted = compact_history(history, keep_recent=2)
+
+    old_content = compacted[0]["content"]
+    assert isinstance(old_content, list)
+    assert old_content[0]["content"] == {"summary": "Found features", "truncated": True}
+    assert history[0]["content"][0]["content"] is large  # type: ignore[index]

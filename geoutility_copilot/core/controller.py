@@ -47,6 +47,7 @@ class AgentController(QObject):
     messageReady = pyqtSignal(str, str)
     busyChanged = pyqtSignal(bool)
     toolStepReady = pyqtSignal(str, str)
+    usageReady = pyqtSignal(str)
 
     def __init__(
         self,
@@ -118,7 +119,12 @@ class AgentController(QObject):
         if self._iterations > 8:
             self._failed("Stopped after reaching the tool-call iteration limit.")
             return
-        task = CompletionTask(self._provider, self._system, self._history, self._registry.specs())
+        task = CompletionTask(
+            self._provider,
+            self._system,
+            compact_history(self._history),
+            self._registry.specs(),
+        )
         task.signals.completed.connect(self._completed)
         task.signals.failed.connect(self._failed)
         self._task = task
@@ -158,6 +164,12 @@ class AgentController(QObject):
 
     def _completed(self, reply: LLMReply) -> None:
         self._task = None
+        if reply.usage:
+            self.usageReady.emit(
+                "{} input · {} output tokens".format(
+                    reply.usage.get("input_tokens", 0), reply.usage.get("output_tokens", 0)
+                )
+            )
         if reply.tool_calls:
             self._history.append(_assistant_history(reply))
             results = []
@@ -283,3 +295,37 @@ def _assistant_history(reply: LLMReply) -> dict[str, Any]:
         for call in reply.tool_calls
     )
     return {"role": "assistant", "content": content}
+
+
+def compact_history(
+    history: list[dict[str, object]], keep_recent: int = 6
+) -> list[dict[str, object]]:
+    """Replace old tool payloads with bounded summaries for provider context."""
+    boundary = max(0, len(history) - keep_recent)
+    compacted: list[dict[str, object]] = []
+    for index, message in enumerate(history):
+        content = message.get("content")
+        if index >= boundary or not isinstance(content, list):
+            compacted.append(message)
+            continue
+        blocks = []
+        for block in content:
+            if not isinstance(block, dict) or block.get("type") != "tool_result":
+                blocks.append(block)
+                continue
+            result = block.get("content", {})
+            summary = (
+                result.get("summary", "Older tool result")
+                if isinstance(result, dict)
+                else "Older tool result"
+            )
+            blocks.append(
+                {
+                    "type": "tool_result",
+                    "tool_use_id": block.get("tool_use_id", ""),
+                    "content": {"summary": summary, "truncated": True},
+                    "is_error": bool(block.get("is_error")),
+                }
+            )
+        compacted.append({"role": message.get("role", "user"), "content": blocks})
+    return compacted

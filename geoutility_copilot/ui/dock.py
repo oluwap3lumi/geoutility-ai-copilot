@@ -45,11 +45,21 @@ class CopilotDock(QDockWidget):
         self.clear_button.setAccessibleName(self.tr("Clear conversation"))
         self.settings_button = QPushButton(self.tr("Settings"), content)
         self.settings_button.setAccessibleName(self.tr("Open copilot settings"))
+        settings = load_settings()
+        self.status_label = QLabel(
+            self.tr("{0} · {1}{2}").format(
+                settings.provider,
+                settings.model,
+                self.tr(" · read-only") if settings.read_only else "",
+            ),
+            content,
+        )
         layout.addWidget(self.privacy_notice)
         layout.addWidget(self.chat_view, 1)
         layout.addWidget(self.input_bar)
         layout.addWidget(self.clear_button)
         layout.addWidget(self.settings_button)
+        layout.addWidget(self.status_label)
         self.setWidget(content)
         self.privacy_notice.setVisible(not load_settings().privacy_notice_seen)
 
@@ -79,6 +89,12 @@ class CopilotDock(QDockWidget):
     def prompt_sent(self) -> None:
         """Clear prompt text after the controller accepts it."""
         self.input_bar.clear()
+
+    def set_usage(self, usage: str) -> None:
+        """Show the latest provider token hint."""
+        self.status_label.setText(
+            f"{self.status_label.text().split(' · tokens:')[0]} · tokens: {usage}"
+        )
 
     def tr(self, message: str) -> str:
         """Translate a user-visible dock string.

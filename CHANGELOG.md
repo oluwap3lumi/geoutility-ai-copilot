@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   validation checks, self-contained HTML, optional CSV findings, metadata, and overwrite refusal.
 - Local Ollama `/api/chat` support with neutral tool/message translation, configurable host,
   provider settings, and clear unsupported-model errors.
+- A 100,000-feature indexed spatial regression, bounded model-visible results, compacted older
+  tool history, and provider token-usage hints in the dock.
 
 ## [0.2.0] - 2026-11-15
 

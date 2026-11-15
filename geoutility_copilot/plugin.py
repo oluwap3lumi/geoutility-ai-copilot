@@ -73,6 +73,7 @@ class GeoUtilityCopilotPlugin:
         controller.toolStepReady.connect(dock.chat_view.add_tool_step)
         dock.chat_view.undoRequested.connect(controller.undo_selection)
         controller.busyChanged.connect(dock.input_bar.set_busy)
+        controller.usageReady.connect(dock.set_usage)
 
         self._action = action
         self._dock = dock
