@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Optional, Protocol
+from typing import Any, Callable, Optional, Protocol
 
 from qgis.core import QgsApplication, QgsProject
 from qgis.PyQt.QtCore import QObject, pyqtSignal
@@ -14,6 +14,9 @@ from geoutility_copilot.core.llm.claude import ClaudeProvider, QgisHttpTransport
 from geoutility_copilot.core.llm.task import CompletionTask
 from geoutility_copilot.core.secrets import AuthManagerSecretStore, SecretStore
 from geoutility_copilot.core.settings import load_settings
+from geoutility_copilot.core.tools import create_m1_registry
+from geoutility_copilot.core.tools.base import ToolContext
+from geoutility_copilot.core.tools.registry import ToolRegistry
 
 ProviderFactory = Callable[[str, str], LLMProvider]
 
@@ -38,6 +41,7 @@ class AgentController(QObject):
         secret_store: Optional[SecretStore] = None,
         provider_factory: Optional[ProviderFactory] = None,
         scheduler: Optional[TaskScheduler] = None,
+        registry: Optional[ToolRegistry] = None,
     ) -> None:
         """Configure the controller dependencies.
 
@@ -52,8 +56,13 @@ class AgentController(QObject):
         self._secrets = secret_store or AuthManagerSecretStore()
         self._provider_factory = provider_factory or self._default_provider
         self._scheduler = scheduler or QgsApplication.taskManager()
+        self._registry = registry or create_m1_registry()
         self._history: list[dict[str, object]] = []
         self._task: Optional[CompletionTask] = None
+        self._provider: Optional[LLMProvider] = None
+        self._system = ""
+        self._iterations = 0
+        self._tool_errors = 0
 
     def submit(self, prompt: str) -> None:
         """Start a model request for a user prompt.
@@ -75,7 +84,20 @@ class AgentController(QObject):
         system = f"{_system_prompt()}\n\n<project_snapshot>{snapshot}</project_snapshot>"
         self._history.append({"role": "user", "content": prompt})
         provider = self._provider_factory(key, settings.model)
-        task = CompletionTask(provider, system, self._history, [])
+        self._provider = provider
+        self._system = system
+        self._iterations = 0
+        self._tool_errors = 0
+        self._schedule_completion()
+
+    def _schedule_completion(self) -> None:
+        if self._provider is None:
+            return
+        self._iterations += 1
+        if self._iterations > 8:
+            self._failed("Stopped after reaching the tool-call iteration limit.")
+            return
+        task = CompletionTask(self._provider, self._system, self._history, self._registry.specs())
         task.signals.completed.connect(self._completed)
         task.signals.failed.connect(self._failed)
         self._task = task
@@ -100,15 +122,41 @@ class AgentController(QObject):
 
     def _completed(self, reply: LLMReply) -> None:
         self._task = None
-        self.busyChanged.emit(False)
         if reply.tool_calls:
-            self.messageReady.emit("error", "The requested GIS tools are not available yet.")
+            self._history.append(_assistant_history(reply))
+            results = []
+            settings = load_settings()
+            context = ToolContext(self._project, never_send_samples=settings.never_send_samples)
+            for call in reply.tool_calls:
+                result = self._registry.execute(call.name, call.arguments, context)
+                self._tool_errors = self._tool_errors + 1 if not result.ok else 0
+                self.messageReady.emit("tool", result.summary if result.ok else result.error)
+                results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": call.id,
+                        "content": {
+                            "ok": result.ok,
+                            "summary": result.summary,
+                            "data": result.data,
+                            "error": result.error,
+                        },
+                        "is_error": not result.ok,
+                    }
+                )
+            self._history.append({"role": "user", "content": results})
+            if self._tool_errors >= 3:
+                self._failed("Stopped after repeated tool errors.")
+                return
+            self._schedule_completion()
             return
+        self.busyChanged.emit(False)
         self._history.append({"role": "assistant", "content": reply.text})
         self.messageReady.emit("assistant", reply.text)
 
     def _failed(self, error: str) -> None:
         self._task = None
+        self._provider = None
         self.busyChanged.emit(False)
         self.messageReady.emit("error", error)
 
@@ -120,3 +168,19 @@ class AgentController(QObject):
 def _system_prompt() -> str:
     path = Path(__file__).parents[1] / "resources" / "prompts" / "system.md"
     return path.read_text(encoding="utf-8")
+
+
+def _assistant_history(reply: LLMReply) -> dict[str, Any]:
+    content: list[dict[str, Any]] = []
+    if reply.text:
+        content.append({"type": "text", "text": reply.text})
+    content.extend(
+        {
+            "type": "tool_use",
+            "id": call.id,
+            "name": call.name,
+            "input": call.arguments,
+        }
+        for call in reply.tool_calls
+    )
+    return {"role": "assistant", "content": content}

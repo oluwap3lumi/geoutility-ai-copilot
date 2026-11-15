@@ -15,3 +15,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Persistent provider/privacy/CRS settings and QGIS Auth Manager-backed API-key storage.
 - Deterministic, schema-only QGIS project snapshots with privacy and layer-count caps.
 - Provider-neutral agent loop, Claude Messages API mapping, cancellable QGIS worker tasks, and live dock controller.
+- Strict tool registry with `inspect_layers` and expression-based `query_features` tools.
