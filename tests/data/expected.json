@@ -1,0 +1,30 @@
+{
+  "counts": {
+    "customers": 40,
+    "feeders": 2,
+    "poles": 25,
+    "transformers": 10
+  },
+  "duplicate_transformer_id": "T08",
+  "null_transformer_feature_index": 10,
+  "pole_offsets_m": [
+    0,
+    10,
+    20,
+    25,
+    30,
+    40,
+    49,
+    50,
+    51,
+    60,
+    75,
+    100
+  ],
+  "threshold_transformer_id": "T02",
+  "unconnected_transformer_feature_indexes": [
+    8,
+    9,
+    10
+  ]
+}
