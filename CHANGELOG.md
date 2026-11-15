@@ -14,3 +14,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Docked chat shell with role-aware messages, keyboard input, Stop/Clear controls, and saved dock state.
 - Persistent provider/privacy/CRS settings and QGIS Auth Manager-backed API-key storage.
 - Deterministic, schema-only QGIS project snapshots with privacy and layer-count caps.
+- Provider-neutral agent loop, Claude Messages API mapping, cancellable QGIS worker tasks, and live dock controller.

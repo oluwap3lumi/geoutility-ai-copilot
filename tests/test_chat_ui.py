@@ -42,34 +42,17 @@ def test_input_enter_submits_and_shift_enter_adds_newline(qgis_app: object) -> N
         input_bar.deleteLater()
 
 
-def test_echo_stop_and_clear_are_non_blocking(qgis_app: object) -> None:
+def test_busy_state_and_clear_are_non_blocking(qgis_app: object) -> None:
     dock = CopilotDock()
     try:
-        dock.input_bar.editor.setText("first")
-
-        dock.input_bar.submit()
-        assert [message.role for message in dock.chat_view.messages] == ["user"]
+        dock.chat_view.add_message("user", "first")
+        dock.input_bar.set_busy(True)
         assert not dock.input_bar.stop_button.isHidden()
 
-        dock.stop()
-        assert [message.role for message in dock.chat_view.messages] == ["user", "error"]
+        dock.input_bar.set_busy(False)
         assert dock.input_bar.stop_button.isHidden()
 
         dock.clear()
         assert dock.chat_view.messages == ()
-    finally:
-        dock.deleteLater()
-
-
-def test_echo_completes_on_timer(qgis_app: object) -> None:
-    dock = CopilotDock()
-    try:
-        dock.input_bar.editor.setText("layers")
-        dock.input_bar.submit()
-
-        QTest.qWait(50)
-
-        assert dock.chat_view.messages[-1].role == "assistant"
-        assert dock.chat_view.messages[-1].text == "Echo: layers"
     finally:
         dock.deleteLater()

@@ -9,6 +9,7 @@ from qgis.gui import QgisInterface
 from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.PyQt.QtWidgets import QAction
 
+from geoutility_copilot.core.controller import AgentController
 from geoutility_copilot.ui.dock import CopilotDock
 
 MENU_NAME = "&GeoUtility AI Copilot"
@@ -29,6 +30,7 @@ class GeoUtilityCopilotPlugin:
         self._iface = iface
         self._action: Optional[QAction] = None
         self._dock: Optional[CopilotDock] = None
+        self._controller: Optional[AgentController] = None
 
     @property
     def action(self) -> Optional[QAction]:
@@ -60,9 +62,17 @@ class GeoUtilityCopilotPlugin:
             Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
         )
         dock.visibilityChanged.connect(self._sync_action_state)
+        controller = AgentController()
+        dock.input_bar.promptSubmitted.connect(controller.submit)
+        dock.input_bar.promptSubmitted.connect(dock.prompt_sent)
+        dock.input_bar.stopRequested.connect(controller.stop)
+        dock.clear_button.clicked.connect(controller.clear)
+        controller.messageReady.connect(dock.chat_view.add_message)
+        controller.busyChanged.connect(dock.input_bar.set_busy)
 
         self._action = action
         self._dock = dock
+        self._controller = controller
         self._iface.addToolBarIcon(action)
         self._iface.addPluginToMenu(MENU_NAME, action)
         self._iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
@@ -76,8 +86,13 @@ class GeoUtilityCopilotPlugin:
         """Disconnect and remove every plugin-owned QGIS widget."""
         action = self._action
         dock = self._dock
+        controller = self._controller
         self._action = None
         self._dock = None
+        self._controller = None
+
+        if controller is not None:
+            controller.shutdown()
 
         if action is not None:
             action.toggled.disconnect(self._set_dock_visible)
