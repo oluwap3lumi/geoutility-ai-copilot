@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   OUTPUT session approval, and approval-aware audit records.
 - CRS-safe `spatial_select` with metre-distance, geometry predicates, selected/expression
   reference filters, spatial indexing, and geographic/projected fixture parity.
+- Attribute and spatial `find_unconnected` analysis with normalization diagnostics,
+  argument-sensitive approval, and optional temporary orphan result layers.
 
 ## [0.1.0] - 2026-11-15
 

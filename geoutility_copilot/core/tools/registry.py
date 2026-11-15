@@ -31,6 +31,14 @@ class ToolRegistry:
         tool = self._tools.get(name)
         return tool.risk if tool is not None else Risk.READ
 
+    def risk_for_call(self, name: str, args: dict[str, Any]) -> Risk:
+        """Return argument-sensitive risk when a tool provides it."""
+        tool = self._tools.get(name)
+        if tool is None:
+            return Risk.READ
+        resolver = getattr(tool, "risk_for_args", None)
+        return resolver(args) if resolver is not None else tool.risk
+
     def preview(self, name: str, args: dict[str, Any], context: ToolContext) -> str:
         """Return a registered tool's human-readable action preview."""
         tool = self._tools.get(name)

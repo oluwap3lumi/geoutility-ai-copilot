@@ -150,7 +150,7 @@ class AgentController(QObject):
             )
             for call in reply.tool_calls:
                 started = perf_counter()
-                risk = self._registry.risk_for(call.name)
+                risk = self._registry.risk_for_call(call.name, call.arguments)
                 decision = check_safety(risk, settings.read_only, self._output_session_approved)
                 approval = decision.action.value
                 if decision.action is SafetyAction.BLOCK:

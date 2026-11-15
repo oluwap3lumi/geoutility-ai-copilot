@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import pytest
+from qgis.core import QgsProject, QgsSettings, QgsVectorLayer
 
 from geoutility_copilot.core.audit import AuditLogger
 from geoutility_copilot.core.controller import AgentController
@@ -14,6 +15,7 @@ from geoutility_copilot.core.llm.fake import FakeProvider
 from geoutility_copilot.core.llm.task import CompletionTask
 from geoutility_copilot.core.safety import ApprovalRequest, ApprovalResponse
 from geoutility_copilot.core.tools.base import Risk, ToolContext, ToolResult
+from geoutility_copilot.core.tools.find_unconnected import FindUnconnectedTool
 from geoutility_copilot.core.tools.registry import ToolRegistry
 
 
@@ -149,3 +151,52 @@ def test_modify_tool_requires_each_explicit_decision(
     assert tool.runs == expected_runs
     assert len(requests) == 1
     assert requests[0].risk is Risk.MODIFY
+
+
+def test_rejected_output_does_not_add_result_layer(
+    qgis_new_project: QgsProject, tmp_path: Path
+) -> None:
+    data = Path(__file__).parent / "data" / "network.gpkg"
+    for table in ("transformers_32631", "customers_32631"):
+        layer = QgsVectorLayer(f"{data}|layername={table}", table, "ogr")
+        assert layer.isValid()
+        qgis_new_project.addMapLayer(layer)
+    provider = FakeProvider(
+        [
+            LLMReply(
+                tool_calls=(
+                    ToolCall(
+                        "1",
+                        "find_unconnected",
+                        {
+                            "asset_layer": "transformers_32631",
+                            "related_layer": "customers_32631",
+                            "mode": "attribute_key",
+                            "asset_key": "transformer_id",
+                            "related_key": "transformer_id",
+                            "create_layer": True,
+                        },
+                    ),
+                )
+            ),
+            LLMReply(text="The output was rejected."),
+        ]
+    )
+    QgsSettings().setValue("GeoUtilityCopilot/readOnly", False)
+    try:
+        controller = AgentController(
+            project=qgis_new_project,
+            secret_store=FakeSecrets("key"),
+            provider_factory=lambda key, model: provider,
+            scheduler=ImmediateScheduler(),
+            registry=ToolRegistry([FindUnconnectedTool()]),
+            audit_logger=AuditLogger(tmp_path / "audit.jsonl"),
+            approval_handler=lambda request: ApprovalResponse(False),
+        )
+
+        controller.submit("create an orphan layer")
+
+        assert len(qgis_new_project.mapLayers()) == 2
+        assert '"approval":"rejected"' in (tmp_path / "audit.jsonl").read_text()
+    finally:
+        QgsSettings().remove("GeoUtilityCopilot/readOnly")
