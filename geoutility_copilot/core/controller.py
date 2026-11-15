@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Callable, Optional, Protocol
+from uuid import uuid4
 
 from qgis.core import QgsApplication, QgsProject
 from qgis.PyQt.QtCore import QObject, pyqtSignal
 
+from geoutility_copilot.core.audit import AuditLogger
 from geoutility_copilot.core.context import build_layer_snapshot
 from geoutility_copilot.core.llm.base import LLMProvider, LLMReply
 from geoutility_copilot.core.llm.claude import ClaudeProvider, QgisHttpTransport
@@ -42,6 +45,7 @@ class AgentController(QObject):
         provider_factory: Optional[ProviderFactory] = None,
         scheduler: Optional[TaskScheduler] = None,
         registry: Optional[ToolRegistry] = None,
+        audit_logger: Optional[AuditLogger] = None,
     ) -> None:
         """Configure the controller dependencies.
 
@@ -57,12 +61,14 @@ class AgentController(QObject):
         self._provider_factory = provider_factory or self._default_provider
         self._scheduler = scheduler or QgsApplication.taskManager()
         self._registry = registry or create_m1_registry()
+        self._audit = audit_logger or AuditLogger()
         self._history: list[dict[str, object]] = []
         self._task: Optional[CompletionTask] = None
         self._provider: Optional[LLMProvider] = None
         self._system = ""
         self._iterations = 0
         self._tool_errors = 0
+        self._turn_id = ""
 
     def submit(self, prompt: str) -> None:
         """Start a model request for a user prompt.
@@ -88,6 +94,7 @@ class AgentController(QObject):
         self._system = system
         self._iterations = 0
         self._tool_errors = 0
+        self._turn_id = uuid4().hex
         self._schedule_completion()
 
     def _schedule_completion(self) -> None:
@@ -128,7 +135,16 @@ class AgentController(QObject):
             settings = load_settings()
             context = ToolContext(self._project, never_send_samples=settings.never_send_samples)
             for call in reply.tool_calls:
+                started = perf_counter()
                 result = self._registry.execute(call.name, call.arguments, context)
+                self._audit.record(
+                    self._turn_id,
+                    call.name,
+                    list(call.arguments),
+                    self._registry.risk_for(call.name),
+                    result,
+                    int((perf_counter() - started) * 1000),
+                )
                 self._tool_errors = self._tool_errors + 1 if not result.ok else 0
                 self.messageReady.emit("tool", result.summary if result.ok else result.error)
                 results.append(

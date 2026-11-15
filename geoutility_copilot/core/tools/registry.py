@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from geoutility_copilot.core.tools.base import Tool, ToolContext, ToolResult
+from geoutility_copilot.core.tools.base import Risk, Tool, ToolContext, ToolResult
 
 
 class ToolRegistry:
@@ -25,6 +25,11 @@ class ToolRegistry:
             }
             for tool in self._tools.values()
         ]
+
+    def risk_for(self, name: str) -> Risk:
+        """Return a registered tool's risk or READ for an unknown call."""
+        tool = self._tools.get(name)
+        return tool.risk if tool is not None else Risk.READ
 
     def execute(self, name: str, args: dict[str, Any], context: ToolContext) -> ToolResult:
         """Validate and execute one registered tool without leaking exceptions."""
