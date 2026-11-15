@@ -14,6 +14,7 @@ from geoutility_copilot.core.audit import AuditLogger
 from geoutility_copilot.core.context import build_layer_snapshot
 from geoutility_copilot.core.llm.base import LLMProvider, LLMReply
 from geoutility_copilot.core.llm.claude import ClaudeProvider, QgisHttpTransport
+from geoutility_copilot.core.llm.ollama import OllamaProvider
 from geoutility_copilot.core.llm.task import CompletionTask
 from geoutility_copilot.core.safety import (
     ApprovalRequest,
@@ -92,13 +93,13 @@ class AgentController(QObject):
         if self._task is not None:
             return
         self.messageReady.emit("user", prompt)
+        settings = load_settings()
         key = self._secrets.get_api_key()
-        if not key:
+        if settings.provider == "claude" and not key:
             self.messageReady.emit(
                 "error", "No Anthropic API key is configured. Open Settings to add one."
             )
             return
-        settings = load_settings()
         snapshot = build_layer_snapshot(self._project, settings.metric_crs)
         system = f"{_system_prompt()}\n\n<project_snapshot>{snapshot}</project_snapshot>"
         self._history.append({"role": "user", "content": prompt})
@@ -243,6 +244,9 @@ class AgentController(QObject):
 
     @staticmethod
     def _default_provider(api_key: str, model: str) -> LLMProvider:
+        settings = load_settings()
+        if settings.provider == "ollama":
+            return OllamaProvider(settings.ollama_host, model, QgisHttpTransport())
         return ClaudeProvider(api_key, model, QgisHttpTransport())
 
     def _capture_selection(self, tool_name: str, arguments: dict[str, Any], risk: Risk) -> str:

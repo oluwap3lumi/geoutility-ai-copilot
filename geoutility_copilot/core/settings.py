@@ -20,6 +20,7 @@ class CopilotSettings:
     metric_crs: str = "EPSG:32631"
     privacy_notice_seen: bool = False
     read_only: bool = False
+    ollama_host: str = "http://localhost:11434"
 
 
 def load_settings(store: Optional[Any] = None) -> CopilotSettings:
@@ -41,6 +42,7 @@ def load_settings(store: Optional[Any] = None) -> CopilotSettings:
             _key("privacyNoticeSeen"), defaults.privacy_notice_seen, type=bool
         ),
         read_only=settings.value(_key("readOnly"), defaults.read_only, type=bool),
+        ollama_host=settings.value(_key("ollamaHost"), defaults.ollama_host, type=str),
     )
 
 
@@ -58,6 +60,7 @@ def save_settings(values: CopilotSettings, store: Optional[Any] = None) -> None:
     settings.setValue(_key("metricCrs"), values.metric_crs)
     settings.setValue(_key("privacyNoticeSeen"), values.privacy_notice_seen)
     settings.setValue(_key("readOnly"), values.read_only)
+    settings.setValue(_key("ollamaHost"), values.ollama_host)
 
 
 def mark_privacy_notice_seen(store: Optional[Any] = None) -> None:
@@ -75,6 +78,7 @@ def mark_privacy_notice_seen(store: Optional[Any] = None) -> None:
             metric_crs=current.metric_crs,
             privacy_notice_seen=True,
             read_only=current.read_only,
+            ollama_host=current.ollama_host,
         ),
         store,
     )

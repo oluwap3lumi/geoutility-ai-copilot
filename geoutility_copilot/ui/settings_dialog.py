@@ -56,8 +56,13 @@ class SettingsDialog(QDialog):
             self,
         )
         notice.setWordWrap(True)
+        ollama_notice = QLabel(
+            self.tr("Ollama requires a locally available model that supports tool calling."), self
+        )
+        ollama_notice.setWordWrap(True)
         self.provider_combo = QComboBox(self)
         self.provider_combo.addItem("Claude", "claude")
+        self.provider_combo.addItem("Ollama (local)", "ollama")
         self.model_edit = QLineEdit(self)
         self.api_key_edit = QLineEdit(self)
         self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
@@ -68,6 +73,7 @@ class SettingsDialog(QDialog):
         self.metric_crs_combo.addItem("UTM zone 31N — EPSG:32631", "EPSG:32631")
         self.metric_crs_combo.addItem("Nigeria West Belt — EPSG:26331", "EPSG:26331")
         self.key_status = QLabel(self)
+        self.ollama_host_edit = QLineEdit(self)
         self.schema_map_edit = QPlainTextEdit(self)
         self.schema_map_edit.setMinimumHeight(180)
         self.propose_schema_button = QPushButton(self.tr("Propose from project"), self)
@@ -77,6 +83,7 @@ class SettingsDialog(QDialog):
         form.addRow(self.tr("Provider"), self.provider_combo)
         form.addRow(self.tr("Model"), self.model_edit)
         form.addRow(self.tr("Anthropic API key"), self.api_key_edit)
+        form.addRow(self.tr("Ollama host"), self.ollama_host_edit)
         form.addRow(self.tr("Key status"), self.key_status)
         form.addRow(self.tr("Privacy"), self.never_samples_check)
         form.addRow(self.tr("Safety"), self.read_only_check)
@@ -92,6 +99,7 @@ class SettingsDialog(QDialog):
 
         layout = QVBoxLayout(self)
         layout.addWidget(notice)
+        layout.addWidget(ollama_notice)
         layout.addLayout(form)
         layout.addWidget(buttons)
         self._load()
@@ -129,6 +137,7 @@ class SettingsDialog(QDialog):
                 metric_crs=str(self.metric_crs_combo.currentData()),
                 privacy_notice_seen=True,
                 read_only=self.read_only_check.isChecked(),
+                ollama_host=self.ollama_host_edit.text().strip(),
             )
         )
         save_schema_map(schema_map)
@@ -140,6 +149,7 @@ class SettingsDialog(QDialog):
         self.model_edit.setText(values.model)
         self.never_samples_check.setChecked(values.never_send_samples)
         self.read_only_check.setChecked(values.read_only)
+        self.ollama_host_edit.setText(values.ollama_host)
         self._select_data(self.metric_crs_combo, values.metric_crs)
         self.schema_map_edit.setPlainText(load_schema_map().to_json())
         status = self.tr("Stored securely in QGIS Auth Manager")

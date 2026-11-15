@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - The fifth v1 tool, `generate_report`, with eight independently selectable utility-network
   validation checks, self-contained HTML, optional CSV findings, metadata, and overwrite refusal.
+- Local Ollama `/api/chat` support with neutral tool/message translation, configurable host,
+  provider settings, and clear unsupported-model errors.
 
 ## [0.2.0] - 2026-11-15
 
