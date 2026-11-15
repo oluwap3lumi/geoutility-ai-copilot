@@ -37,6 +37,7 @@ class ToolContext:
     max_samples: int = 3
     max_result_ids: int = 20
     metric_crs: str = "EPSG:32631"
+    model: str = "unknown"
 
 
 class Tool(Protocol):

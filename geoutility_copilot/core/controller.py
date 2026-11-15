@@ -23,7 +23,7 @@ from geoutility_copilot.core.safety import (
 )
 from geoutility_copilot.core.secrets import AuthManagerSecretStore, SecretStore
 from geoutility_copilot.core.settings import load_settings
-from geoutility_copilot.core.tools import create_m2_registry
+from geoutility_copilot.core.tools import create_m3_registry
 from geoutility_copilot.core.tools.base import Risk, ToolContext, ToolResult
 from geoutility_copilot.core.tools.layers import resolve_vector_layer
 from geoutility_copilot.core.tools.registry import ToolRegistry
@@ -70,7 +70,7 @@ class AgentController(QObject):
         self._secrets = secret_store or AuthManagerSecretStore()
         self._provider_factory = provider_factory or self._default_provider
         self._scheduler = scheduler or QgsApplication.taskManager()
-        self._registry = registry or create_m2_registry()
+        self._registry = registry or create_m3_registry()
         self._audit = audit_logger or AuditLogger()
         self._approval_handler = approval_handler
         self._output_session_approved = False
@@ -165,6 +165,7 @@ class AgentController(QObject):
                 self._project,
                 never_send_samples=settings.never_send_samples,
                 metric_crs=settings.metric_crs,
+                model=settings.model,
             )
             for call in reply.tool_calls:
                 started = perf_counter()

@@ -1,6 +1,7 @@
 """Registered GIS tools."""
 
 from geoutility_copilot.core.tools.find_unconnected import FindUnconnectedTool
+from geoutility_copilot.core.tools.generate_report import GenerateReportTool
 from geoutility_copilot.core.tools.inspect_layers import InspectLayersTool
 from geoutility_copilot.core.tools.query_features import QueryFeaturesTool
 from geoutility_copilot.core.tools.registry import ToolRegistry
@@ -16,4 +17,17 @@ def create_m2_registry() -> ToolRegistry:
     """Return the available Milestone 2 tool registry."""
     return ToolRegistry(
         [InspectLayersTool(), QueryFeaturesTool(), SpatialSelectTool(), FindUnconnectedTool()]
+    )
+
+
+def create_m3_registry() -> ToolRegistry:
+    """Return all five executable v1 tools."""
+    return ToolRegistry(
+        [
+            InspectLayersTool(),
+            QueryFeaturesTool(),
+            SpatialSelectTool(),
+            FindUnconnectedTool(),
+            GenerateReportTool(),
+        ]
     )
