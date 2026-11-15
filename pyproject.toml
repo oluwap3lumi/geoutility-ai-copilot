@@ -15,7 +15,7 @@ target-version = ["py39"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --basetemp=.pytest-tmp"
+addopts = "-ra --basetemp=.pytest-runtime -o cache_dir=.pytest-runtime-cache"
 markers = [
   "qgis: requires the QGIS runtime",
   "integration: opt-in external-service integration test",

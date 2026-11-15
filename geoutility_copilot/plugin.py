@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from typing import Optional
 
+from qgis.core import QgsSettings
 from qgis.gui import QgisInterface
 from qgis.PyQt.QtCore import QCoreApplication, Qt
-from qgis.PyQt.QtWidgets import QAction, QDockWidget, QLabel
+from qgis.PyQt.QtWidgets import QAction
+
+from geoutility_copilot.ui.dock import CopilotDock
 
 MENU_NAME = "&GeoUtility AI Copilot"
 DOCK_OBJECT_NAME = "GeoUtilityCopilotDock"
+VISIBILITY_SETTING = "GeoUtilityCopilot/dockVisible"
+GEOMETRY_SETTING = "GeoUtilityCopilot/dockGeometry"
 
 
 class GeoUtilityCopilotPlugin:
@@ -23,7 +28,7 @@ class GeoUtilityCopilotPlugin:
         """
         self._iface = iface
         self._action: Optional[QAction] = None
-        self._dock: Optional[QDockWidget] = None
+        self._dock: Optional[CopilotDock] = None
 
     @property
     def action(self) -> Optional[QAction]:
@@ -31,7 +36,7 @@ class GeoUtilityCopilotPlugin:
         return self._action
 
     @property
-    def dock(self) -> Optional[QDockWidget]:
+    def dock(self) -> Optional[CopilotDock]:
         """Return the plugin dock, if initialized."""
         return self._dock
 
@@ -40,6 +45,8 @@ class GeoUtilityCopilotPlugin:
         if self._action is not None:
             return
 
+        settings = QgsSettings()
+        should_show = settings.value(VISIBILITY_SETTING, False, type=bool)
         main_window = self._iface.mainWindow()
         action = QAction(self.tr("GeoUtility AI Copilot"), main_window)
         action.setObjectName("GeoUtilityCopilotAction")
@@ -47,12 +54,11 @@ class GeoUtilityCopilotPlugin:
         action.setToolTip(self.tr("Open GeoUtility AI Copilot"))
         action.toggled.connect(self._set_dock_visible)
 
-        dock = QDockWidget(self.tr("GeoUtility AI Copilot"), main_window)
+        dock = CopilotDock(main_window)
         dock.setObjectName(DOCK_OBJECT_NAME)
         dock.setAllowedAreas(
             Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
         )
-        dock.setWidget(QLabel(self.tr("GeoUtility AI Copilot is ready."), dock))
         dock.visibilityChanged.connect(self._sync_action_state)
 
         self._action = action
@@ -60,7 +66,11 @@ class GeoUtilityCopilotPlugin:
         self._iface.addToolBarIcon(action)
         self._iface.addPluginToMenu(MENU_NAME, action)
         self._iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
-        dock.hide()
+        geometry = settings.value(GEOMETRY_SETTING)
+        if geometry is not None:
+            dock.restoreGeometry(geometry)
+        action.setChecked(should_show)
+        dock.setVisible(should_show)
 
     def unload(self) -> None:
         """Disconnect and remove every plugin-owned QGIS widget."""
@@ -76,6 +86,8 @@ class GeoUtilityCopilotPlugin:
             action.deleteLater()
 
         if dock is not None:
+            QgsSettings().setValue(GEOMETRY_SETTING, dock.saveGeometry())
+            dock.shutdown()
             dock.visibilityChanged.disconnect(self._sync_action_state)
             self._iface.removeDockWidget(dock)
             dock.deleteLater()
@@ -89,9 +101,11 @@ class GeoUtilityCopilotPlugin:
         return QCoreApplication.translate("GeoUtilityCopilotPlugin", message)
 
     def _set_dock_visible(self, visible: bool) -> None:
+        QgsSettings().setValue(VISIBILITY_SETTING, visible)
         if self._dock is not None:
             self._dock.setVisible(visible)
 
     def _sync_action_state(self, visible: bool) -> None:
+        QgsSettings().setValue(VISIBILITY_SETTING, visible)
         if self._action is not None and self._action.isChecked() != visible:
             self._action.setChecked(visible)

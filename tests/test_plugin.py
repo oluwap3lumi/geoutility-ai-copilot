@@ -5,18 +5,26 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
+from qgis.core import QgsSettings
 from qgis.gui import QgisInterface
 from qgis.PyQt.QtWidgets import QDockWidget
 
 from geoutility_copilot import classFactory
-from geoutility_copilot.plugin import DOCK_OBJECT_NAME, GeoUtilityCopilotPlugin
+from geoutility_copilot.plugin import (
+    DOCK_OBJECT_NAME,
+    GEOMETRY_SETTING,
+    VISIBILITY_SETTING,
+    GeoUtilityCopilotPlugin,
+)
 
 
 @pytest.fixture
 def plugin(qgis_iface: QgisInterface) -> Iterator[GeoUtilityCopilotPlugin]:
+    QgsSettings().remove("GeoUtilityCopilot")
     instance = classFactory(qgis_iface)
     yield instance
     instance.unload()
+    QgsSettings().remove("GeoUtilityCopilot")
 
 
 def test_class_factory_creates_plugin(qgis_iface: QgisInterface) -> None:
@@ -55,3 +63,15 @@ def test_unload_removes_dock_and_supports_two_reload_cycles(
         assert plugin.action is None
         assert plugin.dock is None
         assert dock.parent() is None or not dock.isVisible()
+
+
+def test_dock_visibility_and_geometry_are_persisted(plugin: GeoUtilityCopilotPlugin) -> None:
+    plugin.initGui()
+    assert plugin.action is not None
+    assert plugin.dock is not None
+
+    plugin.action.setChecked(True)
+    assert QgsSettings().value(VISIBILITY_SETTING, type=bool)
+    plugin.unload()
+
+    assert QgsSettings().value(GEOMETRY_SETTING) is not None
