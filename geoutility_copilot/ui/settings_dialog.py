@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from qgis.core import QgsProject
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
@@ -14,10 +15,19 @@ from qgis.PyQt.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
+from geoutility_copilot.core.schema_map import (
+    load_schema_map,
+    parse_schema_map,
+    propose_schema_map,
+    save_schema_map,
+    validate_schema_map,
+)
 from geoutility_copilot.core.secrets import AuthManagerSecretStore, SecretStore, SecretStoreError
 from geoutility_copilot.core.settings import CopilotSettings, load_settings, save_settings
 
@@ -57,6 +67,10 @@ class SettingsDialog(QDialog):
         self.metric_crs_combo.addItem("UTM zone 31N — EPSG:32631", "EPSG:32631")
         self.metric_crs_combo.addItem("Nigeria West Belt — EPSG:26331", "EPSG:26331")
         self.key_status = QLabel(self)
+        self.schema_map_edit = QPlainTextEdit(self)
+        self.schema_map_edit.setMinimumHeight(180)
+        self.propose_schema_button = QPushButton(self.tr("Propose from project"), self)
+        self.propose_schema_button.clicked.connect(self._propose_schema_map)
 
         form = QFormLayout()
         form.addRow(self.tr("Provider"), self.provider_combo)
@@ -65,6 +79,8 @@ class SettingsDialog(QDialog):
         form.addRow(self.tr("Key status"), self.key_status)
         form.addRow(self.tr("Privacy"), self.never_samples_check)
         form.addRow(self.tr("Metric CRS"), self.metric_crs_combo)
+        form.addRow(self.tr("Schema map (JSON)"), self.schema_map_edit)
+        form.addRow("", self.propose_schema_button)
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel,
             parent=self,
@@ -88,6 +104,16 @@ class SettingsDialog(QDialog):
             return
         api_key = self.api_key_edit.text().strip()
         try:
+            schema_map = parse_schema_map(self.schema_map_edit.toPlainText())
+        except (TypeError, ValueError) as exc:
+            QMessageBox.warning(self, self.tr("Invalid schema map"), str(exc))
+            return
+        project = QgsProject.instance()
+        mapping_errors = validate_schema_map(schema_map, project) if project.mapLayers() else []
+        if mapping_errors:
+            QMessageBox.warning(self, self.tr("Invalid schema map"), "\n".join(mapping_errors))
+            return
+        try:
             if api_key:
                 self._secret_store.set_api_key(api_key)
         except SecretStoreError as exc:
@@ -102,6 +128,7 @@ class SettingsDialog(QDialog):
                 privacy_notice_seen=True,
             )
         )
+        save_schema_map(schema_map)
         self.accept()
 
     def _load(self) -> None:
@@ -110,10 +137,18 @@ class SettingsDialog(QDialog):
         self.model_edit.setText(values.model)
         self.never_samples_check.setChecked(values.never_send_samples)
         self._select_data(self.metric_crs_combo, values.metric_crs)
+        self.schema_map_edit.setPlainText(load_schema_map().to_json())
         status = self.tr("Stored securely in QGIS Auth Manager")
         if not self._secret_store.has_api_key():
             status = self.tr("No key stored")
         self.key_status.setText(status)
+
+    def _propose_schema_map(self) -> None:
+        """Populate an editable proposal without persisting it."""
+        mapping = propose_schema_map(
+            QgsProject.instance(), str(self.metric_crs_combo.currentData())
+        )
+        self.schema_map_edit.setPlainText(mapping.to_json())
 
     @staticmethod
     def _select_data(combo: QComboBox, value: str) -> None:

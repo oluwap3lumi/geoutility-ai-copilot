@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Deterministic projected/geographic synthetic utility fixtures and machine-readable truth data.
+- Project-aware semantic schema maps with validation, conservative proposals, settings editing,
+  and role/sensitivity exposure in layer context.
 
 ## [0.1.0] - 2026-11-15
 

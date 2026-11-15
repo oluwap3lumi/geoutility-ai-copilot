@@ -60,6 +60,7 @@ def test_dialog_saves_key_outside_qgssettings(qgis_app: object) -> None:
     try:
         dialog.api_key_edit.setText("test-secret-key")
         dialog.model_edit.setText("test-model")
+        dialog.schema_map_edit.setPlainText('{"roles":{}}')
         dialog.save()
 
         assert secrets.api_key == "test-secret-key"

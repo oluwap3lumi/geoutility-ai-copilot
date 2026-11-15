@@ -1,0 +1,21 @@
+{
+  "roles": {
+    "transformer": {
+      "layer": "transformers_32631",
+      "id_field": "transformer_id",
+      "rated_field": "rated_kva",
+      "load_field": "load_kva",
+      "feeder_field": "feeder_id"
+    },
+    "customer": {
+      "layer": "customers_32631",
+      "id_field": "customer_id",
+      "transformer_key": "transformer_id",
+      "sensitive_fields": ["name"]
+    },
+    "pole": {"layer": "poles_32631", "id_field": "pole_id", "feeder_field": "feeder_id"},
+    "feeder_11kv": {"layer": "feeders_32631", "id_field": "feeder_id"}
+  },
+  "metric_crs": "EPSG:32631",
+  "overload_threshold": 1.0
+}

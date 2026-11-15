@@ -6,6 +6,12 @@ from typing import Any, ClassVar
 
 from qgis.core import QgsVectorLayer, QgsWkbTypes
 
+from geoutility_copilot.core.schema_map import (
+    SchemaMap,
+    load_schema_map,
+    roles_for_layer,
+    sensitive_fields_for_layer,
+)
 from geoutility_copilot.core.tools.base import Risk, ToolContext, ToolResult
 from geoutility_copilot.core.tools.layers import resolve_vector_layer
 
@@ -39,9 +45,11 @@ class InspectLayersTool:
         reference = args.get("layer")
         if reference:
             layer = resolve_vector_layer(context.project, str(reference))
-            data = _vector_details(layer, bool(args.get("include_samples")), context)
+            mapping = load_schema_map(context.project)
+            data = _vector_details(layer, bool(args.get("include_samples")), context, mapping)
             return ToolResult(True, f"Inspected layer '{layer.name()}'.", data)
         layers = []
+        mapping = load_schema_map(context.project)
         for layer in sorted(
             context.project.mapLayers().values(), key=lambda item: item.name().casefold()
         ):
@@ -58,6 +66,7 @@ class InspectLayersTool:
                         "geometry": QgsWkbTypes.displayString(layer.wkbType()),
                         "feature_count": layer.featureCount(),
                         "selected_count": layer.selectedFeatureCount(),
+                        "roles": roles_for_layer(mapping, layer),
                     }
                 )
             layers.append(item)
@@ -65,10 +74,11 @@ class InspectLayersTool:
 
 
 def _vector_details(
-    layer: QgsVectorLayer, include_samples: bool, context: ToolContext
+    layer: QgsVectorLayer, include_samples: bool, context: ToolContext, mapping: SchemaMap
 ) -> dict[str, Any]:
     fields = [{"name": field.name(), "type": field.typeName()} for field in layer.fields()]
     samples = []
+    configured_sensitive = sensitive_fields_for_layer(mapping, layer)
     if include_samples and not context.never_send_samples:
         for feature in layer.getFeatures():
             row = {}
@@ -76,7 +86,8 @@ def _vector_details(
                 value = feature[field.name()]
                 row[field.name()] = (
                     "[sensitive]"
-                    if any(part in field.name().casefold() for part in SENSITIVE_PARTS)
+                    if field.name().casefold() in configured_sensitive
+                    or any(part in field.name().casefold() for part in SENSITIVE_PARTS)
                     else str(value)[:40]
                 )
             samples.append(row)
@@ -91,5 +102,6 @@ def _vector_details(
         "feature_count": layer.featureCount(),
         "selected_count": layer.selectedFeatureCount(),
         "fields": fields,
+        "roles": roles_for_layer(mapping, layer),
         "samples": samples,
     }

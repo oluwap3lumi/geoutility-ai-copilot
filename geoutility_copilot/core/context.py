@@ -7,6 +7,8 @@ from typing import Any, Optional
 
 from qgis.core import Qgis, QgsMapLayer, QgsProject, QgsVectorLayer, QgsWkbTypes
 
+from geoutility_copilot.core.schema_map import SchemaMap, load_schema_map, roles_for_layer
+
 MAX_DETAILED_LAYERS = 40
 
 
@@ -15,6 +17,7 @@ def build_layer_snapshot(
     metric_crs: str = "EPSG:32631",
     active_layer: Optional[QgsMapLayer] = None,
     map_extent_available: bool = False,
+    schema_map: Optional[SchemaMap] = None,
 ) -> str:
     """Return a privacy-safe JSON snapshot of the current project.
 
@@ -24,6 +27,7 @@ def build_layer_snapshot(
         active_layer: Currently active map layer, when available.
         map_extent_available: Whether a map extent exists; coordinates are not included.
     """
+    mapping = schema_map or load_schema_map(project)
     layers = sorted(
         project.mapLayers().values(), key=lambda layer: (layer.name().casefold(), layer.id())
     )
@@ -34,7 +38,7 @@ def build_layer_snapshot(
         "metric_crs_setting": metric_crs,
         "layer_count": len(layers),
         "map_extent_available": map_extent_available,
-        "layers": [_layer_details(layer, active_layer) for layer in detailed],
+        "layers": [_layer_details(layer, active_layer, mapping) for layer in detailed],
         "overflow_layers": [
             {"name": layer.name(), "id": layer.id(), "type": _layer_type(layer)}
             for layer in overflow
@@ -44,7 +48,9 @@ def build_layer_snapshot(
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
 
 
-def _layer_details(layer: QgsMapLayer, active_layer: Optional[QgsMapLayer]) -> dict[str, Any]:
+def _layer_details(
+    layer: QgsMapLayer, active_layer: Optional[QgsMapLayer], schema_map: SchemaMap
+) -> dict[str, Any]:
     details: dict[str, Any] = {
         "name": layer.name(),
         "id": layer.id(),
@@ -54,6 +60,7 @@ def _layer_details(layer: QgsMapLayer, active_layer: Optional[QgsMapLayer]) -> d
         "active": active_layer is not None and layer.id() == active_layer.id(),
     }
     if isinstance(layer, QgsVectorLayer):
+        roles = roles_for_layer(schema_map, layer)
         details.update(
             {
                 "geometry": QgsWkbTypes.displayString(layer.wkbType()),
@@ -62,6 +69,7 @@ def _layer_details(layer: QgsMapLayer, active_layer: Optional[QgsMapLayer]) -> d
                 "fields": [
                     {"name": field.name(), "type": field.typeName()} for field in layer.fields()
                 ],
+                "roles": roles,
             }
         )
     else:

@@ -8,6 +8,7 @@ from qgis.core import QgsField, QgsProject, QgsVectorLayer
 from qgis.PyQt.QtCore import QMetaType
 
 from geoutility_copilot.core.context import MAX_DETAILED_LAYERS, build_layer_snapshot
+from geoutility_copilot.core.schema_map import SchemaMap
 
 
 def test_empty_project_snapshot(qgis_new_project: QgsProject) -> None:
@@ -73,3 +74,13 @@ def test_snapshot_is_deterministic(qgis_new_project: QgsProject) -> None:
 
     assert first == second
     assert [item["name"] for item in json.loads(first)["layers"]] == ["Alpha", "Zulu"]
+
+
+def test_snapshot_exposes_confirmed_layer_roles(qgis_new_project: QgsProject) -> None:
+    layer = QgsVectorLayer("Point", "DSS Transformers", "memory")
+    qgis_new_project.addMapLayer(layer)
+    mapping = SchemaMap({"transformer": {"layer": "DSS Transformers"}})
+
+    details = json.loads(build_layer_snapshot(qgis_new_project, schema_map=mapping))["layers"][0]
+
+    assert details["roles"] == ["transformer"]
