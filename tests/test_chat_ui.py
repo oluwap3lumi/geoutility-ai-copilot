@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtTest import QTest
+from qgis.PyQt.QtWidgets import QToolButton
 
 from geoutility_copilot.ui.chat_view import ChatView
 from geoutility_copilot.ui.dock import CopilotDock
@@ -56,3 +57,22 @@ def test_busy_state_and_clear_are_non_blocking(qgis_app: object) -> None:
         assert dock.chat_view.messages == ()
     finally:
         dock.deleteLater()
+
+
+def test_tool_step_emits_one_shot_undo_token(qgis_app: object) -> None:
+    view = ChatView()
+    try:
+        tokens: list[str] = []
+        view.undoRequested.connect(tokens.append)
+        view.add_tool_step("Selected 2 features.", "undo-token")
+        button = next(
+            item for item in view.findChildren(QToolButton) if item.text() == "Undo selection"
+        )
+
+        button.click()
+        button.click()
+
+        assert tokens == ["undo-token"]
+        assert not button.isEnabled()
+    finally:
+        view.deleteLater()

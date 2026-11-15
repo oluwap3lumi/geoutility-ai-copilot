@@ -40,6 +40,10 @@ class QueryFeaturesTool:
         """Describe the reversible query/selection."""
         return "Query features and optionally change the reversible map selection."
 
+    def selection_layer_reference(self, args: dict[str, Any]) -> str:
+        """Return the layer whose selection may change."""
+        return str(args.get("layer", "")) if args.get("select") else ""
+
     def run(self, args: dict[str, Any], context: ToolContext) -> ToolResult:
         """Evaluate the expression, aggregate, and optionally select matches."""
         layer = resolve_vector_layer(context.project, str(args["layer"]))

@@ -70,6 +70,8 @@ class GeoUtilityCopilotPlugin:
         dock.input_bar.stopRequested.connect(controller.stop)
         dock.clear_button.clicked.connect(controller.clear)
         controller.messageReady.connect(dock.chat_view.add_message)
+        controller.toolStepReady.connect(dock.chat_view.add_tool_step)
+        dock.chat_view.undoRequested.connect(controller.undo_selection)
         controller.busyChanged.connect(dock.input_bar.set_busy)
 
         self._action = action

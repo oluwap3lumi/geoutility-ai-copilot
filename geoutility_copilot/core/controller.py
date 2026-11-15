@@ -25,6 +25,7 @@ from geoutility_copilot.core.secrets import AuthManagerSecretStore, SecretStore
 from geoutility_copilot.core.settings import load_settings
 from geoutility_copilot.core.tools import create_m2_registry
 from geoutility_copilot.core.tools.base import Risk, ToolContext, ToolResult
+from geoutility_copilot.core.tools.layers import resolve_vector_layer
 from geoutility_copilot.core.tools.registry import ToolRegistry
 
 ProviderFactory = Callable[[str, str], LLMProvider]
@@ -44,6 +45,7 @@ class AgentController(QObject):
 
     messageReady = pyqtSignal(str, str)
     busyChanged = pyqtSignal(bool)
+    toolStepReady = pyqtSignal(str, str)
 
     def __init__(
         self,
@@ -79,6 +81,7 @@ class AgentController(QObject):
         self._iterations = 0
         self._tool_errors = 0
         self._turn_id = ""
+        self._selection_undo: dict[str, tuple[str, list[int]]] = {}
 
     def submit(self, prompt: str) -> None:
         """Start a model request for a user prompt.
@@ -130,12 +133,27 @@ class AgentController(QObject):
         """Clear local conversation history when idle."""
         if self._task is None:
             self._history.clear()
+            self._selection_undo.clear()
+
+    def undo_selection(self, token: str) -> None:
+        """Restore a selection snapshot identified by an opaque UI token."""
+        snapshot = self._selection_undo.pop(token, None)
+        if snapshot is None:
+            self.messageReady.emit("error", "Selection undo is no longer available.")
+            return
+        layer = self._project.mapLayer(snapshot[0])
+        if layer is None:
+            self.messageReady.emit("error", "Cannot undo selection because the layer was removed.")
+            return
+        layer.selectByIds(snapshot[1])
+        self.messageReady.emit("tool", f"Restored selection on '{layer.name()}'.")
 
     def shutdown(self) -> None:
         """Cancel work and detach task signals before unload."""
         if self._task is not None:
             self._task.cancel()
             self._task = None
+        self._selection_undo.clear()
 
     def _completed(self, reply: LLMReply) -> None:
         self._task = None
@@ -151,6 +169,7 @@ class AgentController(QObject):
             for call in reply.tool_calls:
                 started = perf_counter()
                 risk = self._registry.risk_for_call(call.name, call.arguments)
+                undo_token = self._capture_selection(call.name, call.arguments, risk)
                 decision = check_safety(risk, settings.read_only, self._output_session_approved)
                 approval = decision.action.value
                 if decision.action is SafetyAction.BLOCK:
@@ -187,7 +206,11 @@ class AgentController(QObject):
                     approval,
                 )
                 self._tool_errors = self._tool_errors + 1 if not result.ok else 0
-                self.messageReady.emit("tool", result.summary if result.ok else result.error)
+                message = result.summary if result.ok else result.error
+                if result.ok and undo_token:
+                    self.toolStepReady.emit(message, undo_token)
+                else:
+                    self.messageReady.emit("tool", message)
                 results.append(
                     {
                         "type": "tool_result",
@@ -220,6 +243,20 @@ class AgentController(QObject):
     @staticmethod
     def _default_provider(api_key: str, model: str) -> LLMProvider:
         return ClaudeProvider(api_key, model, QgisHttpTransport())
+
+    def _capture_selection(self, tool_name: str, arguments: dict[str, Any], risk: Risk) -> str:
+        if risk is not Risk.SELECTION:
+            return ""
+        reference = self._registry.selection_layer_reference(tool_name, arguments)
+        if not reference:
+            return ""
+        try:
+            layer = resolve_vector_layer(self._project, reference)
+        except ValueError:
+            return ""
+        token = uuid4().hex
+        self._selection_undo[token] = (layer.id(), list(layer.selectedFeatureIds()))
+        return token
 
 
 def _system_prompt() -> str:

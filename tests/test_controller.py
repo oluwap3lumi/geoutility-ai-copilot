@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import pytest
-from qgis.core import QgsProject, QgsSettings, QgsVectorLayer
+from qgis.core import QgsFeature, QgsGeometry, QgsPointXY, QgsProject, QgsSettings, QgsVectorLayer
 
 from geoutility_copilot.core.audit import AuditLogger
 from geoutility_copilot.core.controller import AgentController
@@ -200,3 +200,82 @@ def test_rejected_output_does_not_add_result_layer(
         assert '"approval":"rejected"' in (tmp_path / "audit.jsonl").read_text()
     finally:
         QgsSettings().remove("GeoUtilityCopilot/readOnly")
+
+
+def test_selection_tool_can_restore_previous_selection(qgis_new_project: QgsProject) -> None:
+    layer = QgsVectorLayer("Point?crs=EPSG:32631", "assets", "memory")
+    features = []
+    for x in (0, 1):
+        feature = QgsFeature(layer.fields())
+        feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, 0)))
+        features.append(feature)
+    layer.dataProvider().addFeatures(features)
+    qgis_new_project.addMapLayer(layer)
+    initial_id = next(layer.getFeatures()).id()
+    layer.selectByIds([initial_id])
+    provider = FakeProvider(
+        [
+            LLMReply(
+                tool_calls=(
+                    ToolCall(
+                        "1",
+                        "query_features",
+                        {"layer": "assets", "expression": "$id >= 0", "select": True},
+                    ),
+                )
+            ),
+            LLMReply(text="Selected."),
+        ]
+    )
+    controller = AgentController(
+        project=qgis_new_project,
+        secret_store=FakeSecrets("key"),
+        provider_factory=lambda key, model: provider,
+        scheduler=ImmediateScheduler(),
+    )
+    steps: list[tuple[str, str]] = []
+    controller.toolStepReady.connect(lambda text, token: steps.append((text, token)))
+
+    controller.submit("select all")
+    assert layer.selectedFeatureCount() == 2
+
+    controller.undo_selection(steps[0][1])
+
+    assert layer.selectedFeatureIds() == [initial_id]
+
+
+def test_selection_undo_handles_removed_layer(qgis_new_project: QgsProject) -> None:
+    layer = QgsVectorLayer("Point", "assets", "memory")
+    qgis_new_project.addMapLayer(layer)
+    provider = FakeProvider(
+        [
+            LLMReply(
+                tool_calls=(
+                    ToolCall(
+                        "1",
+                        "query_features",
+                        {"layer": "assets", "expression": "TRUE", "select": True},
+                    ),
+                )
+            ),
+            LLMReply(text="Selected."),
+        ]
+    )
+    controller = AgentController(
+        project=qgis_new_project,
+        secret_store=FakeSecrets("key"),
+        provider_factory=lambda key, model: provider,
+        scheduler=ImmediateScheduler(),
+    )
+    tokens: list[str] = []
+    errors: list[str] = []
+    controller.toolStepReady.connect(lambda text, token: tokens.append(token))
+    controller.messageReady.connect(
+        lambda role, text: errors.append(text) if role == "error" else None
+    )
+    controller.submit("select")
+    qgis_new_project.removeMapLayer(layer.id())
+
+    controller.undo_selection(tokens[0])
+
+    assert "layer was removed" in errors[-1]

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from qgis.PyQt.QtCore import QCoreApplication, Qt
+from qgis.PyQt.QtCore import QCoreApplication, Qt, pyqtSignal
 from qgis.PyQt.QtWidgets import (
     QFrame,
     QLabel,
@@ -30,6 +30,8 @@ class RenderedMessage:
 
 class ChatView(QScrollArea):
     """Scrollable list of user, assistant, tool, and error messages."""
+
+    undoRequested = pyqtSignal(str)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         """Create the scrollable message container.
@@ -75,6 +77,12 @@ class ChatView(QScrollArea):
                 widget.deleteLater()
         self._messages.clear()
 
+    def add_tool_step(self, text: str, undo_token: str) -> None:
+        """Render a tool step with a one-shot selection undo action."""
+        widget = self._tool_message(text, undo_token)
+        self._layout.addWidget(widget)
+        self._messages.append(RenderedMessage(role="tool", text=text))
+
     def _text_message(self, role: str, text: str) -> QTextBrowser:
         browser = QTextBrowser(self._container)
         browser.setObjectName(f"GeoUtilityMessage-{role}")
@@ -88,7 +96,7 @@ class ChatView(QScrollArea):
             browser.setPlainText(text)
         return browser
 
-    def _tool_message(self, text: str) -> QWidget:
+    def _tool_message(self, text: str, undo_token: str = "") -> QWidget:
         container = QWidget(self._container)
         layout = QVBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -108,6 +116,16 @@ class ChatView(QScrollArea):
         toggle.toggled.connect(set_expanded)
         layout.addWidget(toggle)
         layout.addWidget(detail)
+        if undo_token:
+            undo = QToolButton(container)
+            undo.setText(self.tr("Undo selection"))
+
+            def request_undo() -> None:
+                undo.setEnabled(False)
+                self.undoRequested.emit(undo_token)
+
+            undo.clicked.connect(request_undo)
+            layout.addWidget(undo)
         return container
 
     def tr(self, message: str) -> str:

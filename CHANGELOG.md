@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   reference filters, spatial indexing, and geographic/projected fixture parity.
 - Attribute and spatial `find_unconnected` analysis with normalization diagnostics,
   argument-sensitive approval, and optional temporary orphan result layers.
+- One-shot selection undo controls backed by private controller snapshots and safe
+  handling when target layers are removed.
 
 ## [0.1.0] - 2026-11-15
 

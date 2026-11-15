@@ -55,6 +55,10 @@ class SpatialSelectTool:
             args.get("reference_layer", "?"),
         )
 
+    def selection_layer_reference(self, args: dict[str, Any]) -> str:
+        """Return the target layer whose selection changes."""
+        return str(args.get("target_layer", ""))
+
     def run(self, args: dict[str, Any], context: ToolContext) -> ToolResult:
         """Execute the spatial selection on the QGIS main thread."""
         target = resolve_vector_layer(context.project, str(args["target_layer"]))

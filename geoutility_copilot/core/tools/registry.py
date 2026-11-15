@@ -44,6 +44,12 @@ class ToolRegistry:
         tool = self._tools.get(name)
         return tool.preview(args, context) if tool is not None else "Unknown tool call."
 
+    def selection_layer_reference(self, name: str, args: dict[str, Any]) -> str:
+        """Return the target layer reference for reversible selection tools."""
+        tool = self._tools.get(name)
+        resolver = getattr(tool, "selection_layer_reference", None)
+        return str(resolver(args)) if resolver is not None else ""
+
     def execute(self, name: str, args: dict[str, Any], context: ToolContext) -> ToolResult:
         """Validate and execute one registered tool without leaking exceptions."""
         tool = self._tools.get(name)
