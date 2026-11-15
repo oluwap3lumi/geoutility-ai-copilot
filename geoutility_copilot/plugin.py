@@ -10,6 +10,8 @@ from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.PyQt.QtWidgets import QAction
 
 from geoutility_copilot.core.controller import AgentController
+from geoutility_copilot.core.safety import ApprovalRequest, ApprovalResponse
+from geoutility_copilot.ui.approval_dialog import ApprovalDialog
 from geoutility_copilot.ui.dock import CopilotDock
 
 MENU_NAME = "&GeoUtility AI Copilot"
@@ -62,7 +64,7 @@ class GeoUtilityCopilotPlugin:
             Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
         )
         dock.visibilityChanged.connect(self._sync_action_state)
-        controller = AgentController()
+        controller = AgentController(approval_handler=self._request_approval)
         dock.input_bar.promptSubmitted.connect(controller.submit)
         dock.input_bar.promptSubmitted.connect(dock.prompt_sent)
         dock.input_bar.stopRequested.connect(controller.stop)
@@ -124,3 +126,9 @@ class GeoUtilityCopilotPlugin:
         QgsSettings().setValue(VISIBILITY_SETTING, visible)
         if self._action is not None and self._action.isChecked() != visible:
             self._action.setChecked(visible)
+
+    def _request_approval(self, request: ApprovalRequest) -> ApprovalResponse:
+        """Collect an explicit decision on the QGIS main thread."""
+        dialog = ApprovalDialog(request, self._iface.mainWindow())
+        dialog.exec()
+        return dialog.response

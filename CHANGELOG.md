@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Deterministic projected/geographic synthetic utility fixtures and machine-readable truth data.
 - Project-aware semantic schema maps with validation, conservative proposals, settings editing,
   and role/sensitivity exposure in layer context.
+- Code-enforced risk policy, read-only blocking, explicit output/modify approval dialog,
+  OUTPUT session approval, and approval-aware audit records.
 
 ## [0.1.0] - 2026-11-15
 

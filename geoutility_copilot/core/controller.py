@@ -15,13 +15,20 @@ from geoutility_copilot.core.context import build_layer_snapshot
 from geoutility_copilot.core.llm.base import LLMProvider, LLMReply
 from geoutility_copilot.core.llm.claude import ClaudeProvider, QgisHttpTransport
 from geoutility_copilot.core.llm.task import CompletionTask
+from geoutility_copilot.core.safety import (
+    ApprovalRequest,
+    ApprovalResponse,
+    SafetyAction,
+    check_safety,
+)
 from geoutility_copilot.core.secrets import AuthManagerSecretStore, SecretStore
 from geoutility_copilot.core.settings import load_settings
 from geoutility_copilot.core.tools import create_m1_registry
-from geoutility_copilot.core.tools.base import ToolContext
+from geoutility_copilot.core.tools.base import Risk, ToolContext, ToolResult
 from geoutility_copilot.core.tools.registry import ToolRegistry
 
 ProviderFactory = Callable[[str, str], LLMProvider]
+ApprovalHandler = Callable[[ApprovalRequest], ApprovalResponse]
 
 
 class TaskScheduler(Protocol):
@@ -46,6 +53,7 @@ class AgentController(QObject):
         scheduler: Optional[TaskScheduler] = None,
         registry: Optional[ToolRegistry] = None,
         audit_logger: Optional[AuditLogger] = None,
+        approval_handler: Optional[ApprovalHandler] = None,
     ) -> None:
         """Configure the controller dependencies.
 
@@ -62,6 +70,8 @@ class AgentController(QObject):
         self._scheduler = scheduler or QgsApplication.taskManager()
         self._registry = registry or create_m1_registry()
         self._audit = audit_logger or AuditLogger()
+        self._approval_handler = approval_handler
+        self._output_session_approved = False
         self._history: list[dict[str, object]] = []
         self._task: Optional[CompletionTask] = None
         self._provider: Optional[LLMProvider] = None
@@ -136,14 +146,41 @@ class AgentController(QObject):
             context = ToolContext(self._project, never_send_samples=settings.never_send_samples)
             for call in reply.tool_calls:
                 started = perf_counter()
-                result = self._registry.execute(call.name, call.arguments, context)
+                risk = self._registry.risk_for(call.name)
+                decision = check_safety(risk, settings.read_only, self._output_session_approved)
+                approval = decision.action.value
+                if decision.action is SafetyAction.BLOCK:
+                    result = ToolResult(False, "Tool blocked.", error=decision.reason)
+                elif decision.action is SafetyAction.PROMPT:
+                    request = ApprovalRequest(
+                        call.name,
+                        risk,
+                        self._registry.preview(call.name, call.arguments, context),
+                        call.arguments,
+                    )
+                    response = (
+                        self._approval_handler(request)
+                        if self._approval_handler is not None
+                        else ApprovalResponse(False)
+                    )
+                    approval = "approved" if response.approved else "rejected"
+                    if response.approved and response.approve_session and risk is Risk.OUTPUT:
+                        self._output_session_approved = True
+                    result = (
+                        self._registry.execute(call.name, call.arguments, context)
+                        if response.approved
+                        else ToolResult(False, "Tool rejected.", error="User rejected")
+                    )
+                else:
+                    result = self._registry.execute(call.name, call.arguments, context)
                 self._audit.record(
                     self._turn_id,
                     call.name,
                     list(call.arguments),
-                    self._registry.risk_for(call.name),
+                    risk,
                     result,
                     int((perf_counter() - started) * 1000),
+                    approval,
                 )
                 self._tool_errors = self._tool_errors + 1 if not result.ok else 0
                 self.messageReady.emit("tool", result.summary if result.ok else result.error)

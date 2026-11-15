@@ -31,6 +31,11 @@ class ToolRegistry:
         tool = self._tools.get(name)
         return tool.risk if tool is not None else Risk.READ
 
+    def preview(self, name: str, args: dict[str, Any], context: ToolContext) -> str:
+        """Return a registered tool's human-readable action preview."""
+        tool = self._tools.get(name)
+        return tool.preview(args, context) if tool is not None else "Unknown tool call."
+
     def execute(self, name: str, args: dict[str, Any], context: ToolContext) -> ToolResult:
         """Validate and execute one registered tool without leaking exceptions."""
         tool = self._tools.get(name)

@@ -32,3 +32,18 @@ def test_audit_appends_metadata_without_raw_values(tmp_path: Path) -> None:
     assert entries[0]["risk"] == "selection"
     assert secret_value not in text
     assert "raw" not in text
+
+
+def test_audit_records_explicit_approval_decision(tmp_path: Path) -> None:
+    path = tmp_path / "audit.jsonl"
+    AuditLogger(path).record(
+        "turn-1",
+        "generate_report",
+        ["folder"],
+        Risk.OUTPUT,
+        ToolResult(False, "Rejected"),
+        2,
+        "rejected",
+    )
+
+    assert json.loads(path.read_text(encoding="utf-8"))["approval"] == "rejected"

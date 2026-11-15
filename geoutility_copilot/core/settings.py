@@ -19,6 +19,7 @@ class CopilotSettings:
     never_send_samples: bool = True
     metric_crs: str = "EPSG:32631"
     privacy_notice_seen: bool = False
+    read_only: bool = False
 
 
 def load_settings(store: Optional[Any] = None) -> CopilotSettings:
@@ -39,6 +40,7 @@ def load_settings(store: Optional[Any] = None) -> CopilotSettings:
         privacy_notice_seen=settings.value(
             _key("privacyNoticeSeen"), defaults.privacy_notice_seen, type=bool
         ),
+        read_only=settings.value(_key("readOnly"), defaults.read_only, type=bool),
     )
 
 
@@ -55,6 +57,7 @@ def save_settings(values: CopilotSettings, store: Optional[Any] = None) -> None:
     settings.setValue(_key("neverSendSamples"), values.never_send_samples)
     settings.setValue(_key("metricCrs"), values.metric_crs)
     settings.setValue(_key("privacyNoticeSeen"), values.privacy_notice_seen)
+    settings.setValue(_key("readOnly"), values.read_only)
 
 
 def mark_privacy_notice_seen(store: Optional[Any] = None) -> None:
@@ -71,6 +74,7 @@ def mark_privacy_notice_seen(store: Optional[Any] = None) -> None:
             never_send_samples=current.never_send_samples,
             metric_crs=current.metric_crs,
             privacy_notice_seen=True,
+            read_only=current.read_only,
         ),
         store,
     )

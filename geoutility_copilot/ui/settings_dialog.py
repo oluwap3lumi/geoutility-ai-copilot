@@ -63,6 +63,7 @@ class SettingsDialog(QDialog):
         self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
         self.api_key_edit.setPlaceholderText(self.tr("Leave blank to keep the stored key"))
         self.never_samples_check = QCheckBox(self.tr("Never send sample values"), self)
+        self.read_only_check = QCheckBox(self.tr("Read-only mode"), self)
         self.metric_crs_combo = QComboBox(self)
         self.metric_crs_combo.addItem("UTM zone 31N — EPSG:32631", "EPSG:32631")
         self.metric_crs_combo.addItem("Nigeria West Belt — EPSG:26331", "EPSG:26331")
@@ -78,6 +79,7 @@ class SettingsDialog(QDialog):
         form.addRow(self.tr("Anthropic API key"), self.api_key_edit)
         form.addRow(self.tr("Key status"), self.key_status)
         form.addRow(self.tr("Privacy"), self.never_samples_check)
+        form.addRow(self.tr("Safety"), self.read_only_check)
         form.addRow(self.tr("Metric CRS"), self.metric_crs_combo)
         form.addRow(self.tr("Schema map (JSON)"), self.schema_map_edit)
         form.addRow("", self.propose_schema_button)
@@ -126,6 +128,7 @@ class SettingsDialog(QDialog):
                 never_send_samples=self.never_samples_check.isChecked(),
                 metric_crs=str(self.metric_crs_combo.currentData()),
                 privacy_notice_seen=True,
+                read_only=self.read_only_check.isChecked(),
             )
         )
         save_schema_map(schema_map)
@@ -136,6 +139,7 @@ class SettingsDialog(QDialog):
         self._select_data(self.provider_combo, values.provider)
         self.model_edit.setText(values.model)
         self.never_samples_check.setChecked(values.never_send_samples)
+        self.read_only_check.setChecked(values.read_only)
         self._select_data(self.metric_crs_combo, values.metric_crs)
         self.schema_map_edit.setPlainText(load_schema_map().to_json())
         status = self.tr("Stored securely in QGIS Auth Manager")

@@ -28,6 +28,7 @@ class AuditLogger:
         risk: Risk,
         result: ToolResult,
         duration_ms: int,
+        approval: str = "automatic",
     ) -> None:
         """Append metadata without prompts, arguments, or result data."""
         entry = {
@@ -36,7 +37,7 @@ class AuditLogger:
             "tool": tool,
             "argument_names": sorted(argument_names),
             "risk": risk.value,
-            "approval": "automatic",
+            "approval": approval,
             "ok": result.ok,
             "summary": result.summary,
             "duration_ms": max(0, duration_ms),
