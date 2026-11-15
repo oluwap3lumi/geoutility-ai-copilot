@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "lint: ruff",
+      "type": "process",
+      "command": "${config:python.defaultInterpreterPath}",
+      "args": ["-m", "ruff", "check", "."],
+      "group": "test",
+      "problemMatcher": "$ruff"
+    },
+    {
+      "label": "format: black check",
+      "type": "process",
+      "command": "${config:python.defaultInterpreterPath}",
+      "args": ["-m", "black", "--check", "."],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "test: pytest",
+      "type": "process",
+      "command": "${config:python.defaultInterpreterPath}",
+      "args": ["-m", "pytest"],
+      "group": {"kind": "test", "isDefault": true},
+      "problemMatcher": []
+    },
+    {
+      "label": "package",
+      "type": "process",
+      "command": "${config:python.defaultInterpreterPath}",
+      "args": ["scripts/package.py"],
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

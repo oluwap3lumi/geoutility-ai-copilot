@@ -1,0 +1,18 @@
+{
+  "python.defaultInterpreterPath": "C:/Program Files/QGIS 3.42.1/apps/Python312/python.exe",
+  "python.analysis.extraPaths": [
+    "C:/Program Files/QGIS 3.42.1/apps/qgis/python",
+    "C:/Program Files/QGIS 3.42.1/apps/qgis/python/plugins"
+  ],
+  "terminal.integrated.env.windows": {
+    "PATH": "C:/Program Files/QGIS 3.42.1/apps/qgis/bin;C:/Program Files/QGIS 3.42.1/apps/Python312/Scripts;C:/Program Files/QGIS 3.42.1/bin;${env:PATH}",
+    "PYTHONHOME": "C:/Program Files/QGIS 3.42.1/apps/Python312",
+    "PYTHONPATH": "C:/Program Files/QGIS 3.42.1/apps/qgis/python;C:/Program Files/QGIS 3.42.1/apps/qgis/python/plugins",
+    "QGIS_PREFIX_PATH": "C:/Program Files/QGIS 3.42.1/apps/qgis",
+    "QT_PLUGIN_PATH": "C:/Program Files/QGIS 3.42.1/apps/qgis/qtplugins;C:/Program Files/QGIS 3.42.1/apps/Qt5/plugins"
+  },
+  "ruff.enable": true,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  }
+}
