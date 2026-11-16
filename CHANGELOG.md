@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-16
+
+### Fixed
+
+- Canonical GPL-2.0 license formatting for automatic repository license recognition; the project
+  grant remains GPL-2.0-or-later as documented in the README.
+
 ## [0.3.1] - 2026-11-16
 
 ### Added
