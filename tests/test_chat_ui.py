@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from inspect import signature
 from pathlib import Path
 
 from qgis.PyQt.QtCore import Qt
@@ -78,6 +79,12 @@ def test_tool_step_emits_one_shot_undo_token(qgis_app: object) -> None:
         assert not button.isEnabled()
     finally:
         view.deleteLater()
+
+
+def test_tool_step_optional_handle_has_no_secret_like_string_default() -> None:
+    parameter = signature(ChatView._tool_message).parameters["undo_handle"]
+
+    assert parameter.default is None
 
 
 def test_assistant_markdown_escapes_embedded_html(qgis_app: object) -> None:

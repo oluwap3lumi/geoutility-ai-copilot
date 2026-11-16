@@ -79,9 +79,9 @@ class ChatView(QScrollArea):
                 widget.deleteLater()
         self._messages.clear()
 
-    def add_tool_step(self, text: str, undo_token: str) -> None:
+    def add_tool_step(self, text: str, undo_handle: str) -> None:
         """Render a tool step with a one-shot selection undo action."""
-        widget = self._tool_message(text, undo_token)
+        widget = self._tool_message(text, undo_handle)
         self._layout.addWidget(widget)
         self._messages.append(RenderedMessage(role="tool", text=text))
 
@@ -111,7 +111,7 @@ class ChatView(QScrollArea):
             layout.addWidget(copy_button)
         return container
 
-    def _tool_message(self, text: str, undo_token: str = "") -> QWidget:
+    def _tool_message(self, text: str, undo_handle: Optional[str] = None) -> QWidget:
         container = QWidget(self._container)
         layout = QVBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -131,13 +131,13 @@ class ChatView(QScrollArea):
         toggle.toggled.connect(set_expanded)
         layout.addWidget(toggle)
         layout.addWidget(detail)
-        if undo_token:
+        if undo_handle:
             undo = QToolButton(container)
             undo.setText(self.tr("Undo selection"))
 
             def request_undo() -> None:
                 undo.setEnabled(False)
-                self.undoRequested.emit(undo_token)
+                self.undoRequested.emit(undo_handle)
 
             undo.clicked.connect(request_undo)
             layout.addWidget(undo)
