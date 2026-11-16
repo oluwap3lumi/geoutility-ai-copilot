@@ -17,7 +17,7 @@ def test_package_contains_runtime_plugin_and_excludes_caches(tmp_path: Path) -> 
     assert "geoutility_copilot/__init__.py" in names
     assert "geoutility_copilot/resources/prompts/system.md" in names
     assert "geoutility_copilot/core/tools/generate_report.py" in names
-    assert "version=0.2.0" in metadata
+    assert "version=0.3.0" in metadata
     assert all("__pycache__" not in name for name in names)
     assert all(not name.endswith((".pyc", "audit.jsonl", ".env")) for name in names)
 

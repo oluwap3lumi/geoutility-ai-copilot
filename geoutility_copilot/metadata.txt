@@ -1,7 +1,7 @@
 [general]
 name=GeoUtility AI Copilot
 qgisMinimumVersion=3.34
-version=0.2.0
+version=0.3.0
 author=Pelumi
 email=pelumiegbeniran59@gmail.com
 description=Natural-language QGIS copilot for electricity-distribution GIS analysis.
