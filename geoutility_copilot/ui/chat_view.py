@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from html import escape
 from typing import Optional
 
 from qgis.PyQt.QtCore import QCoreApplication, Qt, pyqtSignal
@@ -91,7 +92,7 @@ class ChatView(QScrollArea):
         browser.setFrameShape(QFrame.Shape.StyledPanel)
         browser.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         if role == "assistant":
-            browser.setMarkdown(text)
+            browser.setMarkdown(escape(text))
         else:
             browser.setPlainText(text)
         return browser

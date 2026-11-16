@@ -24,6 +24,19 @@ class FakeTransport:
         return self.response
 
 
+class SequenceTransport:
+    def __init__(self, responses: list[HttpResponse]) -> None:
+        self.responses = responses
+        self.calls = 0
+
+    def post(
+        self, url: str, headers: dict[str, str], body: bytes, cancel_token: CancelToken
+    ) -> HttpResponse:
+        response = self.responses[self.calls]
+        self.calls += 1
+        return response
+
+
 def test_text_and_tool_use_mapping() -> None:
     transport = FakeTransport(
         HttpResponse(
@@ -83,3 +96,29 @@ def test_unauthorized_error_does_not_expose_key() -> None:
         provider.complete("system", [], [], CancelToken())
 
     assert "top-secret" not in str(error.value)
+
+
+def test_rate_limit_and_server_failure_are_retried() -> None:
+    transport = SequenceTransport(
+        [
+            HttpResponse(429, b"{}"),
+            HttpResponse(503, b"{}"),
+            HttpResponse(200, b'{"content":[{"type":"text","text":"ok"}]}'),
+        ]
+    )
+    provider = ClaudeProvider("secret", "model", transport, retry_delays=(0, 0))
+
+    reply = provider.complete("system", [], [], CancelToken())
+
+    assert reply.text == "ok"
+    assert transport.calls == 3
+
+
+def test_retry_stops_after_bound() -> None:
+    transport = SequenceTransport([HttpResponse(503, b"{}"), HttpResponse(503, b"{}")])
+    provider = ClaudeProvider("secret", "model", transport, retry_delays=(0,))
+
+    with pytest.raises(ProviderError, match="HTTP 503"):
+        provider.complete("system", [], [], CancelToken())
+
+    assert transport.calls == 2

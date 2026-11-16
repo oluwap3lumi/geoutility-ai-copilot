@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtTest import QTest
-from qgis.PyQt.QtWidgets import QToolButton
+from qgis.PyQt.QtWidgets import QTextBrowser, QToolButton
 
 from geoutility_copilot.ui.chat_view import ChatView
 from geoutility_copilot.ui.dock import CopilotDock
@@ -74,5 +74,20 @@ def test_tool_step_emits_one_shot_undo_token(qgis_app: object) -> None:
 
         assert tokens == ["undo-token"]
         assert not button.isEnabled()
+    finally:
+        view.deleteLater()
+
+
+def test_assistant_markdown_escapes_embedded_html(qgis_app: object) -> None:
+    view = ChatView()
+    try:
+        view.add_message("assistant", "**Safe** <img src=x onerror=alert(1)>")
+        browser = view.findChild(QTextBrowser)
+
+        assert browser is not None
+        assert "<img src=x" not in browser.toHtml()
+        assert "&lt;img" in browser.toHtml()
+        assert "Safe" in browser.toPlainText()
+        assert "<img" in browser.toPlainText()
     finally:
         view.deleteLater()

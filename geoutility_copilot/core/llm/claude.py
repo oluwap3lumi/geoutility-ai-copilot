@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -58,6 +59,7 @@ class QgisHttpTransport:
         if cancel_token.is_cancelled():
             raise CancelledError("Request cancelled.")
         request = QNetworkRequest(QUrl(url))
+        request.setTransferTimeout(60_000)
         for name, value in headers.items():
             request.setRawHeader(
                 QByteArray(name.encode("ascii")), QByteArray(value.encode("utf-8"))
@@ -85,6 +87,7 @@ class ClaudeProvider:
         model: str,
         transport: HttpTransport,
         max_tokens: int = 2048,
+        retry_delays: tuple[float, ...] = (0.5, 1.0),
     ) -> None:
         """Configure the provider.
 
@@ -98,6 +101,7 @@ class ClaudeProvider:
         self._model = model
         self._transport = transport
         self._max_tokens = max_tokens
+        self._retry_delays = retry_delays
 
     def complete(
         self,
@@ -114,7 +118,8 @@ class ClaudeProvider:
             "messages": [_wire_message(message) for message in messages],
             "tools": tools,
         }
-        response = self._transport.post(
+        response = post_with_retries(
+            self._transport,
             MESSAGES_URL,
             {
                 "x-api-key": self._api_key,
@@ -123,6 +128,7 @@ class ClaudeProvider:
             },
             json.dumps(payload, separators=(",", ":")).encode("utf-8"),
             cancel_token,
+            self._retry_delays,
         )
         if response.status == 401:
             raise ProviderError("API key rejected. Check the key in Settings.")
@@ -146,6 +152,29 @@ def _wire_message(message: dict[str, Any]) -> dict[str, Any]:
             converted["content"] = json.dumps(converted["content"], separators=(",", ":"))
         blocks.append(converted)
     return {"role": message["role"], "content": blocks}
+
+
+def post_with_retries(
+    transport: HttpTransport,
+    url: str,
+    headers: dict[str, str],
+    body: bytes,
+    cancel_token: CancelToken,
+    retry_delays: tuple[float, ...],
+) -> HttpResponse:
+    """Retry rate limits and server failures with cancellable bounded delays."""
+    for attempt in range(len(retry_delays) + 1):
+        response = transport.post(url, headers, body, cancel_token)
+        if response.status != 429 and response.status < 500:
+            return response
+        if attempt == len(retry_delays):
+            return response
+        deadline = time.monotonic() + retry_delays[attempt]
+        while time.monotonic() < deadline:
+            if cancel_token.is_cancelled():
+                raise CancelledError("Request cancelled.")
+            time.sleep(min(0.05, max(0, deadline - time.monotonic())))
+    raise ProviderError("Network retry failed.")
 
 
 def _parse_reply(data: dict[str, Any], request_id: str) -> LLMReply:

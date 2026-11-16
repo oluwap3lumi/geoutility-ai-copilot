@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   provider settings, and clear unsupported-model errors.
 - A 100,000-feature indexed spatial regression, bounded model-visible results, compacted older
   tool history, and provider token-usage hints in the dock.
+- Bounded 429/5xx retries, a 60-second network transfer timeout, inert HTML rendering in chat,
+  and five-cycle plugin lifecycle stress coverage.
 
 ## [0.2.0] - 2026-11-15
 

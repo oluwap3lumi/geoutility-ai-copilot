@@ -7,13 +7,19 @@ from typing import Any
 from urllib.parse import urlparse
 
 from geoutility_copilot.core.llm.base import CancelToken, LLMReply, ProviderError, ToolCall
-from geoutility_copilot.core.llm.claude import HttpTransport
+from geoutility_copilot.core.llm.claude import HttpTransport, post_with_retries
 
 
 class OllamaProvider:
     """Translate neutral messages to and from Ollama `/api/chat`."""
 
-    def __init__(self, host: str, model: str, transport: HttpTransport) -> None:
+    def __init__(
+        self,
+        host: str,
+        model: str,
+        transport: HttpTransport,
+        retry_delays: tuple[float, ...] = (0.5, 1.0),
+    ) -> None:
         """Configure a local Ollama endpoint and tool-capable model."""
         parsed = urlparse(host)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -21,6 +27,7 @@ class OllamaProvider:
         self._url = host.rstrip("/") + "/api/chat"
         self._model = model
         self._transport = transport
+        self._retry_delays = retry_delays
 
     def complete(
         self,
@@ -36,11 +43,13 @@ class OllamaProvider:
             "tools": [_wire_tool(tool) for tool in tools],
             "stream": False,
         }
-        response = self._transport.post(
+        response = post_with_retries(
+            self._transport,
             self._url,
             {"content-type": "application/json"},
             json.dumps(payload, separators=(",", ":")).encode("utf-8"),
             cancel_token,
+            self._retry_delays,
         )
         if response.status >= 400:
             detail = _error_detail(response.body)

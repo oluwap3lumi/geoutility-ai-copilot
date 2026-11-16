@@ -48,10 +48,10 @@ def test_action_toggles_dock(plugin: GeoUtilityCopilotPlugin) -> None:
     assert plugin.dock.isHidden()
 
 
-def test_unload_removes_dock_and_supports_two_reload_cycles(
+def test_unload_removes_dock_and_supports_five_reload_cycles(
     qgis_iface: QgisInterface,
 ) -> None:
-    for _ in range(2):
+    for _ in range(5):
         plugin = classFactory(qgis_iface)
         plugin.initGui()
         dock = plugin.dock
