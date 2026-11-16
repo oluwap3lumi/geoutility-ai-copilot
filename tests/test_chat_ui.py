@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtTest import QTest
-from qgis.PyQt.QtWidgets import QTextBrowser, QToolButton
+from qgis.PyQt.QtWidgets import QApplication, QTextBrowser, QToolButton
 
 from geoutility_copilot.ui.chat_view import ChatView
 from geoutility_copilot.ui.dock import CopilotDock
@@ -91,3 +93,32 @@ def test_assistant_markdown_escapes_embedded_html(qgis_app: object) -> None:
         assert "<img" in browser.toPlainText()
     finally:
         view.deleteLater()
+
+
+def test_assistant_copy_button_uses_plain_source_text(qgis_app: object) -> None:
+    view = ChatView()
+    try:
+        view.add_message("assistant", "**Result:** 3 orphans")
+        button = next(item for item in view.findChildren(QToolButton) if item.text() == "Copy")
+
+        button.click()
+
+        assert QApplication.clipboard().text() == "**Result:** 3 orphans"
+    finally:
+        view.deleteLater()
+
+
+def test_examples_and_plain_text_export(qgis_app: object, tmp_path: Path) -> None:
+    dock = CopilotDock()
+    try:
+        dock.example_buttons[0].click()
+        assert dock.input_bar.editor.toPlainText() == "Find transformers without customers"
+        dock.chat_view.add_message("user", "hello")
+        dock.chat_view.add_message("assistant", "hi")
+        destination = tmp_path / "chat.txt"
+
+        dock.export_chat_to(destination)
+
+        assert destination.read_text(encoding="utf-8") == "[USER]\nhello\n\n[ASSISTANT]\nhi\n"
+    finally:
+        dock.deleteLater()

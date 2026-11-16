@@ -8,6 +8,7 @@ from typing import Optional
 
 from qgis.PyQt.QtCore import QCoreApplication, Qt, pyqtSignal
 from qgis.PyQt.QtWidgets import (
+    QApplication,
     QFrame,
     QLabel,
     QScrollArea,
@@ -84,8 +85,15 @@ class ChatView(QScrollArea):
         self._layout.addWidget(widget)
         self._messages.append(RenderedMessage(role="tool", text=text))
 
-    def _text_message(self, role: str, text: str) -> QTextBrowser:
-        browser = QTextBrowser(self._container)
+    def export_text(self) -> str:
+        """Return a role-labelled plain-text conversation export."""
+        return "\n\n".join(f"[{item.role.upper()}]\n{item.text}" for item in self._messages) + "\n"
+
+    def _text_message(self, role: str, text: str) -> QWidget:
+        container = QWidget(self._container)
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        browser = QTextBrowser(container)
         browser.setObjectName(f"GeoUtilityMessage-{role}")
         browser.setAccessibleName(self.tr("{0} message").format(role.capitalize()))
         browser.setOpenExternalLinks(False)
@@ -95,7 +103,13 @@ class ChatView(QScrollArea):
             browser.setMarkdown(escape(text))
         else:
             browser.setPlainText(text)
-        return browser
+        layout.addWidget(browser)
+        if role == "assistant":
+            copy_button = QToolButton(container)
+            copy_button.setText(self.tr("Copy"))
+            copy_button.clicked.connect(lambda: QApplication.clipboard().setText(text))
+            layout.addWidget(copy_button)
+        return container
 
     def _tool_message(self, text: str, undo_token: str = "") -> QWidget:
         container = QWidget(self._container)

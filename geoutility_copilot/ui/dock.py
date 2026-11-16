@@ -2,11 +2,22 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional
 
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QLabel, QPushButton, QVBoxLayout, QWidget
+from qgis.PyQt.QtCore import QCoreApplication, QUrl
+from qgis.PyQt.QtGui import QDesktopServices
+from qgis.PyQt.QtWidgets import (
+    QDialog,
+    QDockWidget,
+    QFileDialog,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
+from geoutility_copilot.core.audit import AuditLogger
 from geoutility_copilot.core.settings import load_settings, mark_privacy_notice_seen
 from geoutility_copilot.ui.chat_view import ChatView
 from geoutility_copilot.ui.input_bar import InputBar
@@ -41,6 +52,15 @@ class CopilotDock(QDockWidget):
         privacy_layout.addWidget(dismiss_privacy)
         self.chat_view = ChatView(content)
         self.input_bar = InputBar(content)
+        self.example_buttons = []
+        for prompt in (
+            self.tr("Find transformers without customers"),
+            self.tr("Select poles within 50 m of the selected feeder"),
+            self.tr("Generate a network asset validation report"),
+        ):
+            button = QPushButton(prompt, content)
+            button.clicked.connect(lambda checked=False, value=prompt: self._use_example(value))
+            self.example_buttons.append(button)
         self.clear_button = QPushButton(self.tr("Clear chat"), content)
         self.clear_button.setAccessibleName(self.tr("Clear conversation"))
         self.settings_button = QPushButton(self.tr("Settings"), content)
@@ -54,17 +74,28 @@ class CopilotDock(QDockWidget):
             ),
             content,
         )
+        self.new_session_button = QPushButton(self.tr("New session"), content)
+        self.export_button = QPushButton(self.tr("Export chat"), content)
+        self.audit_button = QPushButton(self.tr("Open audit log"), content)
         layout.addWidget(self.privacy_notice)
         layout.addWidget(self.chat_view, 1)
+        for button in self.example_buttons:
+            layout.addWidget(button)
         layout.addWidget(self.input_bar)
         layout.addWidget(self.clear_button)
+        layout.addWidget(self.new_session_button)
         layout.addWidget(self.settings_button)
+        layout.addWidget(self.export_button)
+        layout.addWidget(self.audit_button)
         layout.addWidget(self.status_label)
         self.setWidget(content)
         self.privacy_notice.setVisible(not load_settings().privacy_notice_seen)
 
         self.clear_button.clicked.connect(self.clear)
+        self.new_session_button.clicked.connect(self.clear)
         self.settings_button.clicked.connect(self.open_settings)
+        self.export_button.clicked.connect(self.export_chat)
+        self.audit_button.clicked.connect(self.open_audit_log)
 
     def clear(self) -> None:
         """Cancel pending echo work and clear the conversation."""
@@ -95,6 +126,30 @@ class CopilotDock(QDockWidget):
         self.status_label.setText(
             f"{self.status_label.text().split(' · tokens:')[0]} · tokens: {usage}"
         )
+
+    def export_chat(self) -> None:
+        """Export the visible conversation to a user-selected text file."""
+        filename, _ = QFileDialog.getSaveFileName(
+            self, self.tr("Export chat"), "geoutility-chat.txt", self.tr("Text files (*.txt)")
+        )
+        if filename:
+            self.export_chat_to(Path(filename))
+
+    def export_chat_to(self, path: Path) -> None:
+        """Write a plain-text chat export to an explicitly selected path."""
+        path.write_text(self.chat_view.export_text(), encoding="utf-8")
+
+    def open_audit_log(self) -> None:
+        """Open the profile-local audit log when it exists."""
+        path = AuditLogger().path
+        if not path.exists():
+            self.chat_view.add_message("error", self.tr("No audit log has been created yet."))
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+
+    def _use_example(self, prompt: str) -> None:
+        self.input_bar.editor.setPlainText(prompt)
+        self.input_bar.editor.setFocus()
 
     def tr(self, message: str) -> str:
         """Translate a user-visible dock string.

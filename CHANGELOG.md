@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   tool history, and provider token-usage hints in the dock.
 - Bounded 429/5xx retries, a 60-second network transfer timeout, inert HTML rendering in chat,
   and five-cycle plugin lifecycle stress coverage.
+- Assistant copy controls, example-prompt buttons, New Session, audit-log opening, and
+  user-selected plain-text chat export.
 
 ## [0.2.0] - 2026-11-15
 
