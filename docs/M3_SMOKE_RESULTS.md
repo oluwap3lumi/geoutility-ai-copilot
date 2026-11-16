@@ -10,7 +10,7 @@ Environment: Windows, QGIS 3.42.1, bundled Python 3.12.9
 | Validation report matches fixture truth and writes only after approval | Partially verified | Tool tests verify 3 transformer orphans, 2 duplicate-ID features, 1 missing mandatory-ID feature, 1 capacity outlier, HTML/CSV output, and overwrite refusal. Controller safety tests verify OUTPUT rejection. Visible approval flow is not manually verified. |
 | Four headline prompts work with Claude and Ollama | Partially verified | FakeProvider composite scenarios and both provider wire adapters pass. No Anthropic key is available. Ollama 0.40.16 is installed but has no local models, so live model quality is unverified. |
 | PostGIS-backed layer set | Not verified | No PostGIS connection or test database was supplied. Tools use normal QGIS providers and contain no direct database code. |
-| ZIP installs in a clean QGIS profile | Partially verified | Deterministic 39-file ZIP passes integrity, content, exclusion, and reproducibility tests. Interactive **Install from ZIP** in a visible clean profile is not verified. |
+| ZIP installs in a clean QGIS profile | Verified (automated) | The final 39-file ZIP was extracted into an isolated workspace profile and QGIS 3.42.1 loaded, started, and unloaded the packaged plugin twice successfully. Interactive **Install from ZIP** presentation remains a visual check. |
 | 100k layer stays responsive and cancellation works | Partially verified | Indexed 100,000-point selection passes under the 60-second regression bound with capped model-visible IDs. Network cancellation is tested. Main-thread tool responsiveness requires visible GUI observation. |
 | Privacy: no coordinates or sensitive fields sent by default | Verified (automated) | Schema-only snapshots, sensitive-field suppression, capped samples, sanitized audit records, and request fixtures are tested. Live packet inspection is not available without a provider request. |
 | All tests and static checks are green | Verified | 93 tests passed; Ruff and `black --check` passed; the final ZIP contains 39 valid runtime files at version 0.3.0. |
@@ -25,7 +25,7 @@ Environment: Windows, QGIS 3.42.1, bundled Python 3.12.9
 
 ## External verification still required
 
-1. Enable the final ZIP in a visible clean QGIS profile and inspect Log Messages after two reloads.
+1. Inspect the packaged plugin in a visible QGIS session and review Log Messages visually.
 2. Run the four demo prompts with a configured Claude key.
 3. Install or select a tool-capable Ollama model and repeat the demo prompts.
 4. Run all five tools against a representative PostGIS-backed project.
