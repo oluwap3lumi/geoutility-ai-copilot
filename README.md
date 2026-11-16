@@ -101,6 +101,10 @@ OUTPUT and triggers the approval dialog before the temporary layer is created.
 
 See [the synthetic demo](docs/demo.md) for the headline workflows.
 
+## License
+
+GeoUtility AI Copilot is licensed under `GPL-2.0-or-later`. See [LICENSE](LICENSE).
+
 ## Checks
 
 ```powershell

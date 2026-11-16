@@ -37,6 +37,7 @@ def test_action_toggles_dock(plugin: GeoUtilityCopilotPlugin) -> None:
     plugin.initGui()
 
     assert plugin.action is not None
+    assert not plugin.action.icon().isNull()
     assert plugin.dock is not None
     assert plugin.dock.objectName() == DOCK_OBJECT_NAME
     assert plugin.dock.isHidden()

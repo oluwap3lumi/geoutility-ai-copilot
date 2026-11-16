@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional
 
 from qgis.core import QgsSettings
 from qgis.gui import QgisInterface
 from qgis.PyQt.QtCore import QCoreApplication, Qt
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
 from geoutility_copilot.core.controller import AgentController
@@ -53,6 +55,7 @@ class GeoUtilityCopilotPlugin:
         should_show = settings.value(VISIBILITY_SETTING, False, type=bool)
         main_window = self._iface.mainWindow()
         action = QAction(self.tr("GeoUtility AI Copilot"), main_window)
+        action.setIcon(QIcon(str(Path(__file__).parent / "resources" / "icon.png")))
         action.setObjectName("GeoUtilityCopilotAction")
         action.setCheckable(True)
         action.setToolTip(self.tr("Open GeoUtility AI Copilot"))
