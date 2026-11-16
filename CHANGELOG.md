@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   and five-cycle plugin lifecycle stress coverage.
 - Assistant copy controls, example-prompt buttons, New Session, audit-log opening, and
   user-selected plain-text chat export.
+- Deterministic runtime-only plugin ZIP packaging, complete provider/setup/troubleshooting
+  documentation, and a synthetic-data demo script.
 
 ## [0.2.0] - 2026-11-15
 
