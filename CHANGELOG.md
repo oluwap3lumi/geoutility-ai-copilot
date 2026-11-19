@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Spatial reference filters reject unknown fields before changing the target selection, including
+  when the reference layer is empty. Query and spatial filters share QGIS expression preparation,
+  preserving valid case-insensitive field names and dynamic attribute expressions.
+
 ## [0.3.3] - 2026-11-16
 
 ### Fixed

@@ -93,6 +93,9 @@ OUTPUT and triggers the approval dialog before the temporary layer is created.
 - **No API key:** Claude requires a key in Settings; Ollama does not.
 - **Ollama cannot call tools:** choose a model explicitly advertised with tool support.
 - **Layer not found:** review the schema map and ensure mapped layers are loaded.
+- **Unknown field in a filter:** use the available fields listed in the error. Query and spatial
+  reference filters use QGIS field resolution, including case-insensitive names and dynamic
+  attribute expressions. Invalid field references are rejected without changing the selection.
 - **Distance error:** configure a projected metric CRS; geographic layers are transformed.
 - **Report already exists:** choose a new filename; reports are never overwritten silently.
 - No source attribute or geometry editing tool ships in v1.

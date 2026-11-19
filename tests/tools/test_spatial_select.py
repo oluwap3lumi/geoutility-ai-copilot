@@ -92,3 +92,83 @@ def test_missing_distance_is_rejected(qgis_new_project: QgsProject) -> None:
     )
 
     assert result.error == "distance_m is required."
+
+
+@pytest.mark.parametrize("empty_reference", [False, True])
+def test_unknown_reference_field_preserves_selection(
+    qgis_new_project: QgsProject, empty_reference: bool
+) -> None:
+    poles = _load(qgis_new_project, "poles_32631")
+    if empty_reference:
+        feeders = QgsVectorLayer(
+            "LineString?crs=EPSG:32631&field=feeder_id:string", "Empty feeders", "memory"
+        )
+        assert feeders.isValid()
+        qgis_new_project.addMapLayer(feeders)
+    else:
+        feeders = _load(qgis_new_project, "feeders_32631")
+    previous = [next(poles.getFeatures()).id()]
+    poles.selectByIds(previous)
+
+    result = SpatialSelectTool().run(
+        {
+            "target_layer": poles.id(),
+            "reference_layer": feeders.id(),
+            "relationship": "within_distance",
+            "distance_m": 50,
+            "reference_expression": "\"missing_feeder\" = 'F01'",
+        },
+        ToolContext(qgis_new_project),
+    )
+
+    assert not result.ok
+    assert "missing_feeder" in result.error
+    assert "Available" in result.error and "feeder_id" in result.error
+    assert poles.selectedFeatureIds() == previous
+
+
+@pytest.mark.parametrize(
+    "expression", ["\"FEEDER_ID\" = 'F01'", "attribute(@feature, 'feeder_id') = 'F01'"]
+)
+def test_reference_filter_uses_qgis_field_resolution(
+    qgis_new_project: QgsProject, expression: str
+) -> None:
+    poles = _load(qgis_new_project, "poles_32631")
+    feeders = _load(qgis_new_project, "feeders_32631")
+
+    result = SpatialSelectTool().run(
+        {
+            "target_layer": poles.id(),
+            "reference_layer": feeders.id(),
+            "relationship": "within_distance",
+            "distance_m": 50,
+            "reference_expression": expression,
+        },
+        ToolContext(qgis_new_project),
+    )
+
+    assert result.ok
+    assert result.data["selected_count"] == 9
+
+
+def test_valid_reference_filter_with_no_matches_clears_selection(
+    qgis_new_project: QgsProject,
+) -> None:
+    poles = _load(qgis_new_project, "poles_32631")
+    feeders = _load(qgis_new_project, "feeders_32631")
+    poles.selectByIds([next(poles.getFeatures()).id()])
+
+    result = SpatialSelectTool().run(
+        {
+            "target_layer": poles.id(),
+            "reference_layer": feeders.id(),
+            "relationship": "within_distance",
+            "distance_m": 50,
+            "reference_expression": "\"feeder_id\" = 'NO_MATCH'",
+        },
+        ToolContext(qgis_new_project),
+    )
+
+    assert result.ok
+    assert result.data["selected_count"] == 0
+    assert not poles.selectedFeatureIds()
