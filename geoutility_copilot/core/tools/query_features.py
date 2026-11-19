@@ -5,9 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any, ClassVar
 
-from qgis.core import QgsExpression, QgsFeatureRequest
-
 from geoutility_copilot.core.tools.base import Risk, ToolContext, ToolResult
+from geoutility_copilot.core.tools.expressions import expression_request
 from geoutility_copilot.core.tools.layers import resolve_vector_layer
 
 
@@ -48,19 +47,10 @@ class QueryFeaturesTool:
     def run(self, args: dict[str, Any], context: ToolContext) -> ToolResult:
         """Evaluate the expression, aggregate, and optionally select matches."""
         layer = resolve_vector_layer(context.project, str(args["layer"]))
-        expression = QgsExpression(str(args["expression"]))
-        if expression.hasParserError():
-            return ToolResult(False, "Invalid expression.", error=expression.parserErrorString())
+        request = expression_request(layer, str(args["expression"]))
+        if isinstance(request, str):
+            return ToolResult(False, "Invalid expression.", error=request)
         fields = {field.name() for field in layer.fields()}
-        missing = sorted(expression.referencedColumns() - fields)
-        if missing:
-            return ToolResult(
-                False,
-                "Expression references unknown fields.",
-                error="Unknown field(s): {}. Available: {}.".format(
-                    ", ".join(missing), ", ".join(sorted(fields))
-                ),
-            )
         for field_arg in ("aggregate_field", "group_by"):
             value = args.get(field_arg)
             if value and value not in fields:
@@ -71,7 +61,7 @@ class QueryFeaturesTool:
                         value, ", ".join(sorted(fields))
                     ),
                 )
-        features = list(layer.getFeatures(QgsFeatureRequest(expression)))
+        features = list(layer.getFeatures(request))
         ids = [feature.id() for feature in features]
         if args.get("select", False):
             _apply_selection(layer, ids, str(args.get("mode", "new")))

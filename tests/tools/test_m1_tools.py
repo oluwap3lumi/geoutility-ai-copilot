@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from qgis.core import QgsFeature, QgsField, QgsProject, QgsVectorLayer
 from qgis.PyQt.QtCore import QMetaType
 
@@ -95,20 +96,39 @@ def test_query_errors_are_actionable(qgis_new_project: QgsProject) -> None:
     qgis_new_project.addMapLayer(layer)
     registry = create_m1_registry()
     context = ToolContext(qgis_new_project)
+    previous = [next(layer.getFeatures()).id()]
+    layer.selectByIds(previous)
 
     missing_layer = registry.execute(
         "query_features", {"layer": "Missing", "expression": "1=1"}, context
     )
     bad_expression = registry.execute(
-        "query_features", {"layer": layer.id(), "expression": '"rating" >'}, context
+        "query_features", {"layer": layer.id(), "expression": '"rating" >', "select": True}, context
     )
     bad_field = registry.execute(
-        "query_features", {"layer": layer.id(), "expression": '"nope" = 1'}, context
+        "query_features", {"layer": layer.id(), "expression": '"nope" = 1', "select": True}, context
     )
 
     assert not missing_layer.ok and "Available" in missing_layer.error
     assert not bad_expression.ok and bad_expression.error
     assert not bad_field.ok and "Available" in bad_field.error
+    assert layer.selectedFeatureIds() == previous
+
+
+@pytest.mark.parametrize("expression", ['"RATING" >= 200', "attribute(@feature, 'rating') >= 200"])
+def test_query_uses_qgis_field_resolution(qgis_new_project: QgsProject, expression: str) -> None:
+    layer = _asset_layer()
+    qgis_new_project.addMapLayer(layer)
+
+    result = create_m1_registry().execute(
+        "query_features",
+        {"layer": layer.id(), "expression": expression, "select": True},
+        ToolContext(qgis_new_project),
+    )
+
+    assert result.ok
+    assert result.data["count"] == 2
+    assert {feature["asset_id"] for feature in layer.getSelectedFeatures()} == {"T2", "T3"}
 
 
 def test_registry_rejects_unknown_arguments(qgis_new_project: QgsProject) -> None:

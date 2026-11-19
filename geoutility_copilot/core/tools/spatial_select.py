@@ -8,9 +8,7 @@ from typing import Any, ClassVar, Union
 from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
-    QgsExpression,
     QgsFeature,
-    QgsFeatureRequest,
     QgsGeometry,
     QgsProject,
     QgsSpatialIndex,
@@ -18,6 +16,7 @@ from qgis.core import (
 )
 
 from geoutility_copilot.core.tools.base import Risk, ToolContext, ToolResult
+from geoutility_copilot.core.tools.expressions import expression_request
 from geoutility_copilot.core.tools.layers import resolve_vector_layer
 
 
@@ -96,10 +95,8 @@ def _reference_features(
 ) -> Union[Iterable[QgsFeature], str]:  # noqa: UP007 - QGIS 3.34 supports Python 3.9
     expression_text = str(args.get("reference_expression", "")).strip()
     if expression_text:
-        expression = QgsExpression(expression_text)
-        if expression.hasParserError():
-            return f"Invalid QGIS expression: {expression.parserErrorString()}"
-        return layer.getFeatures(QgsFeatureRequest(expression))
+        request = expression_request(layer, expression_text)
+        return request if isinstance(request, str) else layer.getFeatures(request)
     if args.get("reference_selected_only"):
         return layer.getSelectedFeatures()
     return layer.getFeatures()
